@@ -217,7 +217,7 @@ function FreeGenerator() {
       const endpoint = `${backendUrl}/api/invitations/generate-free`;
       const response = await fetch(endpoint, {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${session.access_token}`
         },
@@ -230,9 +230,9 @@ function FreeGenerator() {
           `Error dari Backend: ${errorData?.detail || response.statusText}`
         );
       }
-      
+
       const finalUrl = `${backendUrl}/api/invitations/${slug}`;
-      
+
       const botResponse = {
         id: messages.length + 2,
         type: "bot",
@@ -615,6 +615,17 @@ function FreeGenerator() {
                           placeholder="Tambahkan catatan khusus atau permintaan lainnya..."
                         />
                       </div>
+
+                      {/* Locked Amplop Digital / Hadiah */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1">
+                          Amplop Digital (Gift) <span title="Fitur ini terkunci di versi Gratis" className="material-symbols-outlined text-yellow-500 text-sm cursor-help">lock</span>
+                        </label>
+                        <div className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-xl cursor-not-allowed text-sm">
+                          Tambahkan rekening bank atau e-wallet (Khusus Premium)
+                        </div>
+                      </div>
+
                     </div>
                   </div>
 

@@ -66,16 +66,13 @@ def create_invitation_html_free(data: dict) -> str:
             - When the page loads, execute JavaScript to read the `to` parameter from the URL query string (`new URLSearchParams(window.location.search).get('to')`).
             - If the `to` parameter exists:
                 - Decode it.
-                - Update the text of the `#guest-name-display` element on the Cover page with this name.
+                - Update the text of `#guest-name-display` element on the Cover page with this name.
                 - Set the value of the `#rsvp-name` input to this name, and make the input `readonly`.
             - Call `loadRsvpMessages()` to display the initial data.
         - **On Form Submission:**
             - Perform a `POST` request to `window.location.origin + "/api/invitations/[SLUG]/rsvp"` with the form data.
             - After success, you **must** call `loadRsvpMessages()` again to refresh the list with the new message.
-    7. **STRICT NO EXTERNAL ASSETS:** 
-        - DO NOT USE ANY <img> TAGS.
-        - DO NOT USE ANY EXTERNAL IMAGE URLS (like via.placeholder.com, unsplash, etc.).
-        - DO NOT USE ANY EXTERNAL FONTS other than standard ones or Google Fonts.
+    7. **STRICT NO EXTERNAL ASSETS:** other than standard ones or Google Fonts.
         - Use only CSS gradients, solid colors, and SVG code for decorations.
         - For icons like hearts, use Unicode characters (e.g., ❤) or simple SVG paths.
     """

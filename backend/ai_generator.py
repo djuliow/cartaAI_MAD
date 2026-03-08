@@ -61,8 +61,10 @@ def create_invitation_html(data: dict) -> str:
     5. Use modern web technologies like Tailwind CSS for styling, and include animations, responsive design, and interactivity.
     6. Replace all placeholders (e.g., [BRIDE_NAME]) with the corresponding wedding details provided.
     5. [GALLERY_PHOTOS_HTML] is already generated - include it in the gallery section without modification.
-    6. If music URL is provided, include an audio player with toggle button; otherwise, omit it.
-    7. Ensure the HTML is complete, functional, and includes all provided images and URLs.
+        - Show this introductory text above the cards: "Your prayers and blessings are a truly meaningful gift to us. And if giving is an expression of love, you can give a cashless gift. Thank you."
+        - Directly insert the HTML provided in [HADIAH_HTML]. Do NOT alter the layout, classes, or styles of the cards inside [HADIAH_HTML], and do NOT wrap them in any padding or margin containers that would restrict their width.
+        - If [HADIAH_HTML] is empty, do not include this section at all.
+    8. Ensure the HTML is complete, functional, and includes all provided images and URLs.
     8. Set the background image for cover and hero sections to [BACKGROUND_URL] using CSS background-size: cover to prevent breaking.
     9. **Guest Personalization (CRITICAL):**
         - On the Cover page, include a section like "Kepada Yth. Bapak/Ibu/Saudara/i:" followed by an element to display the guest name (e.g., `<span id="guest-name-display">Tamu Undangan</span>`).
@@ -147,6 +149,101 @@ def create_invitation_html(data: dict) -> str:
     prompt = prompt.replace("[GALLERY_PHOTOS_HTML]", gallery_html.strip())
     prompt = prompt.replace("[SPECIAL_NOTES]", data.get('catatanKhusus') or 'N/A')
     prompt = prompt.replace("[BACKGROUND_URL]", background_url)
+
+    # Process Hadiah (Gifts)
+    hadiah_list = data.get('hadiah')
+    hadiah_html_text = ""
+    frontend_url = data.get('frontendUrl', 'https://cartaai.my.id').rstrip('/')
+    
+    if isinstance(hadiah_list, list) and hadiah_list:
+        for idx, h in enumerate(hadiah_list):
+            bank_name = h.get('namaBank', '')
+            logo_html_or_text = f"<span class='text-xl font-bold italic text-slate-800'>{bank_name}</span>"
+            if bank_name.upper() in ["BCA", "BNI", "BRI", "MANDIRI"]:
+                logo_url = f"https://sckwugoazrkjdulqzxoq.supabase.co/storage/v1/object/public/invitation-assets/static_banks/{bank_name.lower()}.png"
+                logo_html_or_text = f"<img src='{logo_url}' alt='{bank_name} Logo' class='h-6 md:h-8 w-auto object-contain' />"
+            
+            acc_num = h.get('noRekening', '')
+            acc_name = h.get('namaRekening', '')
+            
+            card_html = f'''
+            <div class="relative w-full max-w-md mx-auto rounded-2xl shadow-xl overflow-hidden mb-6" style="background-image: url('https://sckwugoazrkjdulqzxoq.supabase.co/storage/v1/object/public/invitation-assets/static_banks/card.png'); background-size: 100% 100%; background-repeat: no-repeat; background-position: center; min-height: 220px;">
+                <div class="absolute inset-0 bg-black/5 bg-blend-overlay"></div>
+                <div class="relative z-10 w-full h-full p-6 flex flex-col justify-between min-h-[220px]">
+                    <div class="flex justify-between items-start w-full">
+                        <div></div>
+                        <div class="h-8 flex justify-end">
+                            {logo_html_or_text}
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 mb-2">
+                        <img src="https://sckwugoazrkjdulqzxoq.supabase.co/storage/v1/object/public/invitation-assets/static_banks/card-banks.png" alt="Chip" class="w-12 h-auto object-contain rounded-sm" />
+                    </div>
+                    
+                    <div class="mt-auto">
+                        <div class="text-2xl font-bold tracking-widest text-[#1a202c] drop-shadow-sm mb-1">
+                            {acc_num}
+                        </div>
+                        <div class="flex justify-between items-end">
+                            <div class="text-[#4a5568] font-medium tracking-wide uppercase text-sm">
+                                {acc_name}
+                            </div>
+                            <button onclick="navigator.clipboard.writeText('{acc_num}'); alert('Nomor Rekening berhasil disalin!');" class="bg-slate-500/80 hover:bg-slate-600 text-white px-3 py-1.5 rounded-md flex items-center gap-2 text-sm backdrop-blur-sm transition-all focus:outline-none focus:ring-2 focus:ring-slate-400 cursor-pointer pointer-events-auto">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                Salin
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            '''
+            hadiah_html_text += card_html
+    elif isinstance(hadiah_list, dict):
+         bank_name = hadiah_list.get('namaBank', '')
+         logo_html_or_text = f"<span class='text-xl font-bold italic text-slate-800'>{bank_name}</span>"
+         if bank_name.upper() in ["BCA", "BNI", "BRI", "MANDIRI"]:
+                logo_url = f"https://sckwugoazrkjdulqzxoq.supabase.co/storage/v1/object/public/invitation-assets/static_banks/{bank_name.lower()}.png"
+                logo_html_or_text = f"<img src='{logo_url}' alt='{bank_name} Logo' class='h-6 md:h-8 w-auto object-contain' />"
+         
+         acc_num = hadiah_list.get('noRekening', '')
+         acc_name = hadiah_list.get('namaRekening', '')
+         card_html = f'''
+            <div class="relative w-full max-w-md mx-auto rounded-2xl shadow-xl overflow-hidden mb-6" style="background-image: url('https://sckwugoazrkjdulqzxoq.supabase.co/storage/v1/object/public/invitation-assets/static_banks/card.png'); background-size: 100% 100%; background-repeat: no-repeat; background-position: center; min-height: 220px;">
+                <div class="absolute inset-0 bg-black/5 bg-blend-overlay"></div>
+                <div class="relative z-10 w-full h-full p-6 flex flex-col justify-between min-h-[220px]">
+                    <div class="flex justify-between items-start w-full">
+                        <div></div>
+                        <div class="h-8 flex justify-end">
+                            {logo_html_or_text}
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 mb-2">
+                        <img src="https://sckwugoazrkjdulqzxoq.supabase.co/storage/v1/object/public/invitation-assets/static_banks/card-banks.png" alt="Chip" class="w-12 h-auto object-contain rounded-sm" />
+                    </div>
+                    
+                    <div class="mt-auto">
+                        <div class="text-2xl font-bold tracking-widest text-[#1a202c] drop-shadow-sm mb-1">
+                            {acc_num}
+                        </div>
+                        <div class="flex justify-between items-end">
+                            <div class="text-[#4a5568] font-medium tracking-wide uppercase text-sm">
+                                {acc_name}
+                            </div>
+                            <button onclick="navigator.clipboard.writeText('{acc_num}'); alert('Nomor Rekening berhasil disalin!');" class="bg-slate-500/80 hover:bg-slate-600 text-white px-3 py-1.5 rounded-md flex items-center gap-2 text-sm backdrop-blur-sm transition-all focus:outline-none focus:ring-2 focus:ring-slate-400 cursor-pointer pointer-events-auto">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                Salin
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            '''
+         hadiah_html_text += card_html
+         
+    prompt = prompt.replace("[HADIAH_HTML]", hadiah_html_text)
+    prompt = prompt.replace("[FRONTEND_URL]", frontend_url)
 
     # Add explicit instructions for music and images
     if has_music:

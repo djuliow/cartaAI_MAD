@@ -31,6 +31,11 @@ router = APIRouter(
 )
 
 # --- Pydantic Models ---
+class GiftInfo(BaseModel):
+    namaBank: str
+    noRekening: str
+    namaRekening: str
+
 class InvitationRequest(BaseModel):
     slug: str
     namaMempelaiPria: str
@@ -53,8 +58,10 @@ class InvitationRequest(BaseModel):
     fotoMempelaiWanita: Optional[str] = None
     galeriFoto: Optional[List[str]] = []
     customFont: Optional[str] = None
+    hadiah: Optional[List[GiftInfo]] = []
 
 class RSVPRequest(BaseModel):
+
     nama: str
     kehadiran: str
     ucapan: Optional[str] = None

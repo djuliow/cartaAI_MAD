@@ -48,9 +48,8 @@ const saveInvitationData = async (invitationData) => {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("User tidak ditemukan.");
   const randomString = Math.random().toString(36).substring(2, 8);
-  const slug = `${
-    invitationData.namaMempelaiPria || "undangan"
-  }-${randomString}`
+  const slug = `${invitationData.namaMempelaiPria || "undangan"
+    }-${randomString}`
     .toLowerCase()
     .replace(/\s+/g, "-");
   const newInvitation = {
@@ -97,6 +96,7 @@ function PremiumGenerator() {
     jenisUndangan: "",
     agama: "",
     catatanKhusus: "",
+    hadiah: [], // Array untuk Amplop Digital
   });
 
   const [previews, setPreviews] = useState({
@@ -123,6 +123,30 @@ function PremiumGenerator() {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleHadiahChange = (index, e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => {
+      const newHadiah = [...prev.hadiah];
+      newHadiah[index] = { ...newHadiah[index], [name]: value };
+      return { ...prev, hadiah: newHadiah };
+    });
+  };
+
+  const addHadiah = () => {
+    setFormData((prev) => ({
+      ...prev,
+      hadiah: [...prev.hadiah, { namaBank: "", noRekening: "", namaRekening: "" }],
+    }));
+  };
+
+  const removeHadiah = (index) => {
+    setFormData((prev) => {
+      const newHadiah = [...prev.hadiah];
+      newHadiah.splice(index, 1);
+      return { ...prev, hadiah: newHadiah };
+    });
   };
 
   const handleFileChange = (e) => {
@@ -188,7 +212,7 @@ function PremiumGenerator() {
     if (requiredFields.some((field) => !formData[field])) {
       alert(
         "Mohon lengkapi field yang wajib diisi: " +
-          requiredFields.filter((field) => !formData[field]).join(", ")
+        requiredFields.filter((field) => !formData[field]).join(", ")
       );
       return;
     }
@@ -213,16 +237,23 @@ function PremiumGenerator() {
         },
         user.id
       );
-      
+
       const randomString = Math.random().toString(36).substring(2, 8);
       const slug = `${formData.namaMempelaiPria || "undangan"}-${randomString}`
         .toLowerCase()
         .replace(/\s+/g, "-");
 
+      const processedHadiah = formData.hadiah.map(h => ({
+        ...h,
+        namaBank: h.namaBank === 'Lainnya' ? h.customBank : h.namaBank
+      }));
+
       const dataForBackend = {
         ...formData,
         ...assetUrls,
-        slug: slug
+        hadiah: processedHadiah,
+        slug: slug,
+        frontendUrl: window.location.origin
       };
 
       setLoadingMessage("Menghubungi AI untuk membuat file undangan...");
@@ -231,7 +262,7 @@ function PremiumGenerator() {
       const endpoint = `${backendUrl}/api/invitations/generate`;
       const response = await fetch(endpoint, {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${session.access_token}`
         },
@@ -244,9 +275,9 @@ function PremiumGenerator() {
           `Error dari Backend: ${errorData?.detail || response.statusText}`
         );
       }
-      
+
       const finalUrl = `${backendUrl}/api/invitations/${slug}`;
-      
+
       const botResponse = {
         id: messages.length + 2,
         type: "bot",
@@ -753,6 +784,99 @@ function PremiumGenerator() {
                           placeholder="Tambahkan catatan khusus atau permintaan lainnya..."
                         />
                       </div>
+
+                      {/* Amplop Digital / Hadiah */}
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Amplop Digital (Opsional)
+                          </label>
+                          <button
+                            type="button"
+                            onClick={addHadiah}
+                            className="text-sm bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200 px-3 py-1 rounded-md hover:bg-indigo-200 dark:hover:bg-indigo-800 transition"
+                          >
+                            + Tambah Rekening/E-Wallet
+                          </button>
+                        </div>
+                        {formData.hadiah.length === 0 && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 italic mb-2">
+                            Tambahkan nomor rekening atau e-wallet untuk menerima hadiah/angpao secara digital.
+                          </p>
+                        )}
+                        {formData.hadiah.map((item, index) => (
+                          <div key={index} className="mb-4 p-4 border border-gray-200 dark:border-gray-600 rounded-lg relative bg-gray-50 dark:bg-gray-800/50">
+                            <button
+                              type="button"
+                              onClick={() => removeHadiah(index)}
+                              className="absolute top-2 right-2 text-red-500 hover:text-red-700 transition"
+                              title="Hapus"
+                            >
+                              <span className="material-symbols-outlined text-sm">close</span>
+                            </button>
+                            <div className="space-y-3 mt-2">
+                              <div>
+                                {item.namaBank === 'Lainnya' ? (
+                                  <div className="flex gap-2">
+                                    <input
+                                      type="text"
+                                      name="customBank"
+                                      value={item.customBank || ""}
+                                      onChange={(e) => handleHadiahChange(index, { target: { name: 'customBank', value: e.target.value } })}
+                                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md focus:ring-1 focus:ring-indigo-500 outline-none"
+                                      placeholder="Ketik nama Bank / E-Wallet"
+                                      autoFocus
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => handleHadiahChange(index, { target: { name: 'namaBank', value: '' } })}
+                                      className="px-3 py-2 text-sm bg-gray-200 dark:bg-gray-600 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 transition"
+                                    >
+                                      Batal
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <select
+                                    name="namaBank"
+                                    value={item.namaBank}
+                                    onChange={(e) => handleHadiahChange(index, e)}
+                                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md focus:ring-1 focus:ring-indigo-500 outline-none"
+                                  >
+                                    <option value="">Pilih Bank / E-Wallet</option>
+                                    <option value="BCA">BCA (Tersedia Logo)</option>
+                                    <option value="BNI">BNI (Tersedia Logo)</option>
+                                    <option value="BRI">BRI (Tersedia Logo)</option>
+                                    <option value="Mandiri">Mandiri (Tersedia Logo)</option>
+                                    <option value="GoPay">GoPay</option>
+                                    <option value="OVO">OVO</option>
+                                    <option value="Dana">Dana</option>
+                                    <option value="Lainnya">Lainnya... (Ketik Sendiri)</option>
+                                  </select>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <input
+                                  type="text"
+                                  name="noRekening"
+                                  value={item.noRekening}
+                                  onChange={(e) => handleHadiahChange(index, e)}
+                                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md focus:ring-1 focus:ring-indigo-500 outline-none"
+                                  placeholder="Nomor Rekening / No HP"
+                                />
+                                <input
+                                  type="text"
+                                  name="namaRekening"
+                                  value={item.namaRekening}
+                                  onChange={(e) => handleHadiahChange(index, e)}
+                                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md focus:ring-1 focus:ring-indigo-500 outline-none"
+                                  placeholder="Atas Nama"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
                     </div>
                   </div>
 
@@ -819,24 +943,22 @@ function PremiumGenerator() {
                     {messages.map((message) => (
                       <div
                         key={message.id}
-                        className={`flex ${
-                          message.type === "user"
-                            ? "justify-end"
-                            : "justify-start"
-                        }`}
+                        className={`flex ${message.type === "user"
+                          ? "justify-end"
+                          : "justify-start"
+                          }`}
                       >
                         <div
-                          className={`max-w-xs lg:max-w-md px-4 py-3 rounded-xl shadow-sm ${
-                            message.type === "user"
-                              ? "text-white"
-                              : "bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-100 dark:border-gray-600"
-                          }`}
+                          className={`max-w-xs lg:max-w-md px-4 py-3 rounded-xl shadow-sm ${message.type === "user"
+                            ? "text-white"
+                            : "bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-100 dark:border-gray-600"
+                            }`}
                           style={
                             message.type === "user"
                               ? {
-                                  background:
-                                    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                                }
+                                background:
+                                  "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                              }
                               : {}
                           }
                         >
