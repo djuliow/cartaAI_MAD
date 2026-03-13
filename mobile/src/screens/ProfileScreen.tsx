@@ -1,0 +1,640 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Modal,
+  SafeAreaView,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Linking,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useAuth } from '../context/AuthContext';
+import { useDarkMode } from '../context/DarkModeContext';
+import Navbar from '../components/Navbar';
+import { API_BASE_URL } from '../lib/api';
+
+type ActiveTab = 'invitations' | 'rsvps' | 'messages';
+
+export default function ProfileScreen() {
+  const { session, logout } = useAuth();
+  const { darkMode } = useDarkMode();
+  const router = useRouter();
+
+  const [invitations, setInvitations] = useState<any[]>([]);
+  const [rsvps, setRsvps] = useState<any[]>([]);
+  const [stats, setStats] = useState({ total: 0, hadir: 0, tidak_hadir: 0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<ActiveTab>('invitations');
+  const [selectedInvitationFilter, setSelectedInvitationFilter] = useState('all');
+
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [shareSlug, setShareSlug] = useState('');
+  const [guestNames, setGuestNames] = useState('');
+  const [persistedGuests, setPersistedGuests] = useState<any[]>([]);
+  const [isSavingGuests, setIsSavingGuests] = useState(false);
+
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [invitationToDelete, setInvitationToDelete] = useState<string | null>(null);
+
+  const theme = useMemo(
+    () => ({
+      bg: darkMode ? '#111827' : '#f9fafb',
+      card: darkMode ? '#1f2937' : '#ffffff',
+      soft: darkMode ? '#0f172a' : '#f8fafc',
+      text: darkMode ? '#ffffff' : '#111827',
+      secondary: darkMode ? '#d1d5db' : '#4b5563',
+      muted: darkMode ? '#9ca3af' : '#6b7280',
+      border: darkMode ? '#374151' : '#e5e7eb',
+    }),
+    [darkMode]
+  );
+
+  const filteredRsvps =
+    selectedInvitationFilter === 'all'
+      ? rsvps
+      : rsvps.filter((item) => String(item.undangan_id) === selectedInvitationFilter);
+
+  const dynamicStats =
+    selectedInvitationFilter === 'all'
+      ? stats
+      : {
+          total: filteredRsvps.length,
+          hadir: filteredRsvps.filter(
+            (item) => !String(item.kehadiran || '').toLowerCase().includes('tidak')
+          ).length,
+          tidak_hadir: filteredRsvps.filter((item) =>
+            String(item.kehadiran || '').toLowerCase().includes('tidak')
+          ).length,
+        };
+
+  useEffect(() => {
+    if (!session) {
+      router.replace('/login');
+      return;
+    }
+    fetchData();
+  }, [session]);
+
+  const fetchData = async () => {
+    if (!session?.access_token) return;
+    setLoading(true);
+    setError(null);
+    try {
+      if (!API_BASE_URL) throw new Error('EXPO_PUBLIC_BACKEND_URL belum diset');
+      const headers = { Authorization: `Bearer ${session.access_token}` };
+
+      const invRes = await fetch(`${API_BASE_URL}/api/invitations/`, { headers });
+      if (!invRes.ok) throw new Error('Gagal mengambil data undangan.');
+      const invData = await invRes.json();
+      setInvitations(
+        invData.sort(
+          (a: any, b: any) =>
+            new Date(b.created_date).getTime() - new Date(a.created_date).getTime()
+        )
+      );
+
+      const rsvpRes = await fetch(`${API_BASE_URL}/api/invitations/all-rsvps`, { headers });
+      if (rsvpRes.ok) {
+        const rsvpData = await rsvpRes.json();
+        setRsvps(rsvpData.messages || []);
+        setStats(rsvpData.stats || { total: 0, hadir: 0, tidak_hadir: 0 });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Gagal memuat data profil.';
+      setError(message);
+      console.error('Fetch Profile Data Error:', { apiBaseUrl: API_BASE_URL, error: err });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchGuests = async (slug: string) => {
+    if (!session?.access_token || !API_BASE_URL) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/invitations/guests/${slug}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (res.ok) setPersistedGuests(await res.json());
+    } catch (err) {
+      console.error('Error fetching guests:', err);
+    }
+  };
+
+  const handleShareClick = (slug: string) => {
+    setShareSlug(slug);
+    setGuestNames('');
+    setPersistedGuests([]);
+    setShareModalOpen(true);
+    fetchGuests(slug);
+  };
+
+  const saveGuests = async () => {
+    if (!session?.access_token || !API_BASE_URL) return;
+    const names = guestNames.split('\n').map((n) => n.trim()).filter(Boolean);
+    if (names.length === 0) {
+      Alert.alert('Daftar tamu kosong', 'Masukkan minimal satu nama tamu.');
+      return;
+    }
+    setIsSavingGuests(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/invitations/guests/bulk`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ slug: shareSlug, names }),
+      });
+      if (!response.ok) throw new Error('Gagal menyimpan daftar tamu.');
+      setGuestNames('');
+      await fetchGuests(shareSlug);
+    } catch (err) {
+      Alert.alert('Error', err instanceof Error ? err.message : 'Gagal menyimpan daftar tamu.');
+    } finally {
+      setIsSavingGuests(false);
+    }
+  };
+
+  const deleteGuest = async (guestId: number) => {
+    if (!session?.access_token || !API_BASE_URL) return;
+    Alert.alert('Hapus tamu?', 'Tamu ini akan dihapus dari daftar.', [
+      { text: 'Batal', style: 'cancel' },
+      {
+        text: 'Hapus',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const res = await fetch(`${API_BASE_URL}/api/invitations/guests/${guestId}`, {
+              method: 'DELETE',
+              headers: { Authorization: `Bearer ${session.access_token}` },
+            });
+            if (res.ok) {
+              setPersistedGuests((prev) =>
+                prev.filter((guest) => guest.id_guest !== guestId)
+              );
+            }
+          } catch {
+            Alert.alert('Error', 'Gagal menghapus tamu.');
+          }
+        },
+      },
+    ]);
+  };
+
+  const requestDeleteInvitation = (slug: string) => {
+    setInvitationToDelete(slug);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDeleteInvitation = async () => {
+    if (!session?.access_token || !API_BASE_URL || !invitationToDelete) return;
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/invitations/`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ slugs: [invitationToDelete] }),
+      });
+      if (!response.ok) throw new Error('Gagal menghapus undangan.');
+      setDeleteModalOpen(false);
+      setInvitationToDelete(null);
+      await fetchData();
+    } catch {
+      Alert.alert('Error', 'Gagal menghapus undangan.');
+    }
+  };
+
+  const getGuestUrl = (name: string) =>
+    `${API_BASE_URL}/api/invitations/${shareSlug}?to=${encodeURIComponent(name)}`;
+
+  const shareGuestLink = async (name: string) => {
+    try {
+      await Share.share({
+        message: `Kepada Yth. ${name}\n\nKami mengundang Anda untuk hadir di acara kami.\n\n${getGuestUrl(
+          name
+        )}`,
+      });
+    } catch {}
+  };
+
+  const openWhatsApp = async (name: string) => {
+    const message = `Kepada Yth. ${name}\n\nKami mengundang Anda untuk hadir di acara kami.\n\n${getGuestUrl(
+      name
+    )}`;
+    await Linking.openURL(`https://wa.me/?text=${encodeURIComponent(message)}`);
+  };
+
+  const openInvitation = async (slug: string) => {
+    if (!API_BASE_URL) return;
+    await Linking.openURL(`${API_BASE_URL}/api/invitations/${slug}`);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    router.replace('/');
+  };
+
+  const StatCard = ({
+    title,
+    value,
+    icon,
+    colors,
+  }: {
+    title: string;
+    value: number;
+    icon: keyof typeof MaterialIcons.glyphMap;
+    colors: [string, string];
+  }) => (
+    <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+      <View style={[styles.statIcon, { backgroundColor: darkMode ? '#111827' : colors[0] }]}>
+        <MaterialIcons name={icon} size={20} color={colors[1]} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.statTitle, { color: theme.muted }]}>{title}</Text>
+        <Text style={[styles.statValue, { color: theme.text }]}>{value}</Text>
+      </View>
+    </View>
+  );
+
+  const TabButton = ({
+    label,
+    value,
+    icon,
+  }: {
+    label: string;
+    value: ActiveTab;
+    icon: keyof typeof MaterialIcons.glyphMap;
+  }) => {
+    const active = activeTab === value;
+    return (
+      <TouchableOpacity
+        onPress={() => setActiveTab(value)}
+        style={[styles.tabButton, active && styles.tabButtonActive]}
+      >
+        <MaterialIcons name={icon} size={18} color={active ? '#6366f1' : '#9ca3af'} />
+        <Text style={[styles.tabText, { color: active ? '#6366f1' : '#9ca3af' }]}>
+          {label}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
+  if (!session) return null;
+
+  return (
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <Navbar />
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <View style={styles.userRow}>
+            <LinearGradient colors={['#6366f1', '#7c3aed']} style={styles.avatar}>
+              <Text style={styles.avatarText}>{session.user.email?.charAt(0).toUpperCase()}</Text>
+            </LinearGradient>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.headerTitle, { color: theme.text }]}>
+                Halo, {session.user.email?.split('@')[0]}!
+              </Text>
+              <Text style={[styles.headerSubtitle, { color: theme.muted }]}>
+                Selamat datang di Dashboard CartaAI Anda.
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.headerActions}>
+            <TouchableOpacity onPress={() => router.push('/template')} style={styles.primaryWrap}>
+              <LinearGradient colors={['#6366f1', '#7c3aed']} style={styles.primaryButton}>
+                <MaterialIcons name="add" size={18} color="#fff" />
+                <Text style={styles.primaryText}>Buat Undangan</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleLogout}
+              style={[styles.logoutButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+            >
+              <MaterialIcons name="logout" size={18} color="#ef4444" />
+              <Text style={styles.logoutText}>Keluar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.statsGrid}>
+          <StatCard title="Total Undangan" value={invitations.length} icon="description" colors={['#eff6ff', '#2563eb']} />
+          <StatCard title="Total RSVP" value={dynamicStats.total} icon="group" colors={['#faf5ff', '#9333ea']} />
+          <StatCard title="Tamu Hadir" value={dynamicStats.hadir} icon="check-circle" colors={['#f0fdf4', '#16a34a']} />
+          <StatCard title="Tamu Berhalangan" value={dynamicStats.tidak_hadir} icon="cancel" colors={['#fef2f2', '#dc2626']} />
+        </View>
+
+        <View style={[styles.panel, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={[styles.tabsRow, { borderBottomColor: theme.border }]}>
+            <TabButton label="Riwayat Undangan" value="invitations" icon="history" />
+            <TabButton label="Data RSVP" value="rsvps" icon="badge" />
+            <TabButton label="Ucapan & Doa" value="messages" icon="chat" />
+          </View>
+
+          {(activeTab === 'rsvps' || activeTab === 'messages') && invitations.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+              <TouchableOpacity
+                onPress={() => setSelectedInvitationFilter('all')}
+                style={[styles.filterChip, selectedInvitationFilter === 'all' && styles.filterChipActive]}
+              >
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    { color: selectedInvitationFilter === 'all' ? '#4f46e5' : '#64748b' },
+                  ]}
+                >
+                  Semua Undangan
+                </Text>
+              </TouchableOpacity>
+              {invitations.map((invitation) => {
+                const content = invitation.tbl_t_invitation_content || {};
+                const value = String(invitation.id_invitation);
+                const active = selectedInvitationFilter === value;
+                return (
+                  <TouchableOpacity
+                    key={value}
+                    onPress={() => setSelectedInvitationFilter(value)}
+                    style={[styles.filterChip, active && styles.filterChipActive]}
+                  >
+                    <Text style={[styles.filterChipText, { color: active ? '#4f46e5' : '#64748b' }]}>
+                      {(content.groom_name || 'Pria') + ' & ' + (content.bride_name || 'Wanita')}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          ) : null}
+
+          <View style={styles.contentArea}>
+            {loading ? (
+              <ActivityIndicator size="large" color="#6366f1" style={{ marginVertical: 32 }} />
+            ) : error ? (
+              <Text style={styles.errorText}>{error}</Text>
+            ) : activeTab === 'invitations' ? (
+              invitations.length > 0 ? (
+                invitations.map((invitation) => {
+                  const content = invitation.tbl_t_invitation_content || {};
+                  const pria = content.groom_name || 'Mempelai Pria';
+                  const wanita = content.bride_name || 'Mempelai Wanita';
+                  return (
+                    <View
+                      key={invitation.id_invitation}
+                      style={[styles.invCard, { backgroundColor: theme.soft, borderColor: theme.border }]}
+                    >
+                      <View style={styles.invHeader}>
+                        <View style={styles.activeBadge}>
+                          <Text style={styles.activeBadgeText}>AKTIF</Text>
+                        </View>
+                        <Text style={[styles.invDate, { color: theme.muted }]}>
+                          {new Date(invitation.created_date).toLocaleDateString()}
+                        </Text>
+                      </View>
+                      <Text style={[styles.invNames, { color: theme.text }]}>{pria} & {wanita}</Text>
+
+                      <TouchableOpacity onPress={() => handleShareClick(invitation.invitation_link)} style={styles.primaryWrap}>
+                        <LinearGradient colors={['#6366f1', '#7c3aed']} style={styles.manageButton}>
+                          <MaterialIcons name="group" size={18} color="#fff" />
+                          <Text style={styles.manageText}>Daftar Tamu & Kirim</Text>
+                        </LinearGradient>
+                      </TouchableOpacity>
+
+                      <View style={styles.invActions}>
+                        <TouchableOpacity
+                          onPress={() => openInvitation(invitation.invitation_link)}
+                          style={[styles.viewButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+                        >
+                          <MaterialIcons name="visibility" size={16} color={theme.secondary} />
+                          <Text style={[styles.viewText, { color: theme.secondary }]}>Lihat</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => requestDeleteInvitation(invitation.invitation_link)}
+                          style={styles.deleteButton}
+                        >
+                          <MaterialIcons name="delete" size={18} color="#ef4444" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })
+              ) : (
+                <Text style={[styles.emptyText, { color: theme.muted }]}>Belum ada riwayat undangan.</Text>
+              )
+            ) : activeTab === 'rsvps' ? (
+              filteredRsvps.length > 0 ? (
+                filteredRsvps.map((item, index) => (
+                  <View key={`${item.id || index}`} style={[styles.rowItem, { borderBottomColor: theme.border }]}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.rowTitle, { color: theme.text }]}>{item.nama}</Text>
+                      <Text style={[styles.rowSub, { color: theme.muted }]}>{item.nama_undangan}</Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.rowBadge,
+                        { backgroundColor: String(item.kehadiran).toLowerCase() === 'hadir' ? '#dcfce7' : '#fee2e2' },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.rowBadgeText,
+                          { color: String(item.kehadiran).toLowerCase() === 'hadir' ? '#166534' : '#991b1b' },
+                        ]}
+                      >
+                        {item.kehadiran}
+                      </Text>
+                    </View>
+                  </View>
+                ))
+              ) : (
+                <Text style={[styles.emptyText, { color: theme.muted }]}>Belum ada tamu yang mengisi RSVP.</Text>
+              )
+            ) : filteredRsvps.filter((item) => item.ucapan).length > 0 ? (
+              filteredRsvps
+                .filter((item) => item.ucapan)
+                .map((item, index) => (
+                  <View
+                    key={`${item.id || index}`}
+                    style={[styles.messageCard, { backgroundColor: theme.soft, borderColor: theme.border }]}
+                  >
+                    <View style={styles.messageHeader}>
+                      <Text style={[styles.messageName, { color: theme.text }]}>{item.nama}</Text>
+                      <Text style={[styles.messageUndangan, { color: theme.muted }]}>{item.nama_undangan}</Text>
+                    </View>
+                    <Text style={[styles.messageBody, { color: theme.secondary }]}>"{item.ucapan}"</Text>
+                  </View>
+                ))
+            ) : (
+              <Text style={[styles.emptyText, { color: theme.muted }]}>Belum ada ucapan atau doa masuk.</Text>
+            )}
+          </View>
+        </View>
+      </ScrollView>
+
+      <Modal visible={shareModalOpen} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { backgroundColor: theme.card }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>Manajemen Tamu</Text>
+              <TouchableOpacity onPress={() => setShareModalOpen(false)}>
+                <MaterialIcons name="close" size={24} color={theme.text} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={[styles.modalLabel, { color: theme.secondary }]}>Tambah Tamu Baru (Satu nama per baris)</Text>
+              <TextInput
+                value={guestNames}
+                onChangeText={setGuestNames}
+                multiline
+                placeholder="Budi Santoso&#10;Keluarga Andi"
+                placeholderTextColor="#9ca3af"
+                style={[styles.textArea, { backgroundColor: theme.soft, borderColor: theme.border, color: theme.text }]}
+              />
+              <TouchableOpacity onPress={saveGuests} disabled={isSavingGuests} style={styles.primaryWrap}>
+                <LinearGradient colors={['#6366f1', '#7c3aed']} style={styles.manageButton}>
+                  {isSavingGuests ? <ActivityIndicator color="#fff" /> : <Text style={styles.manageText}>Simpan ke Database</Text>}
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <Text style={[styles.guestTitle, { color: theme.text }]}>Daftar Tamu Tersimpan ({persistedGuests.length})</Text>
+              {persistedGuests.length > 0 ? (
+                persistedGuests.map((guest) => (
+                  <View key={guest.id_guest} style={[styles.guestRow, { borderBottomColor: theme.border }]}>
+                    <Text style={[styles.guestName, { color: theme.text }]}>{guest.guest_name}</Text>
+                    <View style={styles.guestActions}>
+                      <TouchableOpacity onPress={() => shareGuestLink(guest.guest_name)} style={[styles.smallAction, { backgroundColor: '#f1f5f9' }]}>
+                        <MaterialIcons name="share" size={16} color="#475569" />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => openWhatsApp(guest.guest_name)} style={[styles.smallAction, { backgroundColor: '#22c55e' }]}>
+                        <MaterialIcons name="send" size={16} color="#fff" />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => deleteGuest(guest.id_guest)} style={[styles.smallAction, { backgroundColor: '#fef2f2' }]}>
+                        <MaterialIcons name="delete" size={16} color="#ef4444" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))
+              ) : (
+                <Text style={[styles.emptyText, { color: theme.muted }]}>Belum ada tamu yang tersimpan.</Text>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={deleteModalOpen} transparent animationType="fade">
+        <View style={styles.deleteOverlay}>
+          <View style={[styles.deleteCard, { backgroundColor: theme.card }]}>
+            <Text style={[styles.deleteTitle, { color: theme.text }]}>Hapus Undangan?</Text>
+            <Text style={[styles.deleteSubtitle, { color: theme.muted }]}>
+              Tindakan ini permanen dan akan menghapus semua data tamu yang terkait.
+            </Text>
+            <View style={styles.deleteActions}>
+              <TouchableOpacity
+                onPress={() => {
+                  setDeleteModalOpen(false);
+                  setInvitationToDelete(null);
+                }}
+                style={[styles.cancelButton, { backgroundColor: theme.soft }]}
+              >
+                <Text style={[styles.cancelText, { color: theme.secondary }]}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={confirmDeleteInvitation} style={styles.confirmButton}>
+                <Text style={styles.confirmText}>Ya, Hapus</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  scrollContent: { paddingTop: 92, paddingHorizontal: 20, paddingBottom: 40 },
+  header: { gap: 18, marginBottom: 20 },
+  userRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  avatar: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: '#fff', fontSize: 24, fontWeight: '800' },
+  headerTitle: { fontSize: 24, fontWeight: '800' },
+  headerSubtitle: { fontSize: 13, marginTop: 4 },
+  headerActions: { flexDirection: 'row', gap: 10 },
+  primaryWrap: { flex: 1, borderRadius: 14, overflow: 'hidden' },
+  primaryButton: { minHeight: 46, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 },
+  primaryText: { color: '#fff', fontSize: 14, fontWeight: '800' },
+  logoutButton: { minWidth: 110, borderWidth: 1, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, paddingHorizontal: 14 },
+  logoutText: { color: '#ef4444', fontSize: 14, fontWeight: '800' },
+  statsGrid: { gap: 12, marginBottom: 20 },
+  statCard: { borderWidth: 1, borderRadius: 18, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  statIcon: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  statTitle: { fontSize: 12, fontWeight: '600' },
+  statValue: { fontSize: 22, fontWeight: '800', marginTop: 2 },
+  panel: { borderWidth: 1, borderRadius: 24, overflow: 'hidden' },
+  tabsRow: { flexDirection: 'row', borderBottomWidth: 1 },
+  tabButton: { flex: 1, minHeight: 58, alignItems: 'center', justifyContent: 'center', gap: 4, borderBottomWidth: 2, borderBottomColor: 'transparent', paddingHorizontal: 8 },
+  tabButtonActive: { borderBottomColor: '#6366f1' },
+  tabText: { fontSize: 11, fontWeight: '700', textAlign: 'center' },
+  filterRow: { paddingHorizontal: 16, paddingVertical: 14, gap: 8 },
+  filterChip: { borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#fff' },
+  filterChipActive: { borderColor: '#6366f1', backgroundColor: '#eef2ff' },
+  filterChipText: { fontSize: 12, fontWeight: '700' },
+  contentArea: { paddingHorizontal: 16, paddingBottom: 16 },
+  invCard: { borderWidth: 1, borderRadius: 18, padding: 16, marginBottom: 12 },
+  invHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  activeBadge: { backgroundColor: '#e0e7ff', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  activeBadgeText: { color: '#4338ca', fontSize: 10, fontWeight: '800' },
+  invDate: { fontSize: 10, fontWeight: '700' },
+  invNames: { fontSize: 18, fontWeight: '800', marginBottom: 14 },
+  manageButton: { minHeight: 44, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, paddingHorizontal: 14 },
+  manageText: { color: '#fff', fontSize: 13, fontWeight: '800' },
+  invActions: { flexDirection: 'row', gap: 10 },
+  viewButton: { flex: 1, minHeight: 42, borderRadius: 12, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  viewText: { fontSize: 12, fontWeight: '800' },
+  deleteButton: { width: 42, height: 42, borderRadius: 12, backgroundColor: '#fef2f2', alignItems: 'center', justifyContent: 'center' },
+  rowItem: { paddingVertical: 14, borderBottomWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  rowTitle: { fontSize: 14, fontWeight: '800' },
+  rowSub: { fontSize: 11, marginTop: 2 },
+  rowBadge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
+  rowBadgeText: { fontSize: 10, fontWeight: '800' },
+  messageCard: { borderWidth: 1, borderRadius: 18, padding: 16, marginBottom: 12 },
+  messageHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, marginBottom: 8 },
+  messageName: { flex: 1, fontSize: 14, fontWeight: '800' },
+  messageUndangan: { fontSize: 10, fontWeight: '700' },
+  messageBody: { fontSize: 14, lineHeight: 22, fontStyle: 'italic' },
+  emptyText: { textAlign: 'center', fontSize: 14, paddingVertical: 32 },
+  errorText: { textAlign: 'center', color: '#ef4444', fontWeight: '700', paddingVertical: 32 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  modalCard: { maxHeight: '88%', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 },
+  modalTitle: { fontSize: 20, fontWeight: '800' },
+  modalLabel: { fontSize: 13, fontWeight: '700', marginBottom: 8 },
+  textArea: { minHeight: 120, borderWidth: 1, borderRadius: 16, padding: 14, textAlignVertical: 'top', marginBottom: 14 },
+  guestTitle: { fontSize: 16, fontWeight: '800', marginTop: 6, marginBottom: 12 },
+  guestRow: { paddingVertical: 12, borderBottomWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  guestName: { flex: 1, fontSize: 14, fontWeight: '700' },
+  guestActions: { flexDirection: 'row', gap: 8 },
+  smallAction: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  deleteOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  deleteCard: { width: '100%', borderRadius: 22, padding: 20 },
+  deleteTitle: { fontSize: 20, fontWeight: '800', marginBottom: 8 },
+  deleteSubtitle: { fontSize: 14, lineHeight: 22, marginBottom: 20 },
+  deleteActions: { flexDirection: 'row', gap: 10 },
+  cancelButton: { flex: 1, minHeight: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  cancelText: { fontWeight: '800' },
+  confirmButton: { flex: 1, minHeight: 44, borderRadius: 12, backgroundColor: '#ef4444', alignItems: 'center', justifyContent: 'center' },
+  confirmText: { color: '#fff', fontWeight: '800' },
+});

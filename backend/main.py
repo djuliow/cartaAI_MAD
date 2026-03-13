@@ -19,15 +19,9 @@ app = FastAPI(
 # Configure CORS (Cross-Origin Resource Sharing)
 from fastapi.middleware.cors import CORSMiddleware
 
-origins = [
-    "https://cartaai.my.id",
-    "http://localhost",
-    "http://localhost:3000",
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"], # Izinkan semua asal untuk testing mobile
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -267,6 +267,17 @@ async def generate_and_upload_invitation_free(request: InvitationRequest, curren
         }
         supabase.table("tbl_t_invitation").upsert(invitation_data, on_conflict="invitation_link").execute()
 
+        invitation_res = (
+            supabase.table("tbl_t_invitation")
+            .select("id_invitation")
+            .eq("invitation_link", request.slug)
+            .eq("id_user", user_id)
+            .limit(1)
+            .execute()
+        )
+        if invitation_res.data:
+            invitation_id = invitation_res.data[0]["id_invitation"]
+
         # 3. Store Content
         content_id = str(uuid.uuid4())
         content_data = {
