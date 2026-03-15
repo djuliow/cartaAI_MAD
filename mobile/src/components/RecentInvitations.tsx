@@ -1,12 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Linking,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 import { useDarkMode } from '../context/DarkModeContext';
 import { API_BASE_URL } from '../lib/api';
 
-export default function RecentInvitations() {
+export default function RecentInvitations({ refreshKey = 0 }: { refreshKey?: number }) {
   const { session } = useAuth();
   const { darkMode } = useDarkMode();
   const router = useRouter();
@@ -19,12 +27,10 @@ export default function RecentInvitations() {
         setLoading(false);
         return;
       }
-
       try {
         const response = await fetch(`${API_BASE_URL}/api/invitations/`, {
           headers: { Authorization: `Bearer ${session.access_token}` },
         });
-
         if (response.ok) {
           const data = await response.json();
           setInvitations(
@@ -37,14 +43,13 @@ export default function RecentInvitations() {
           );
         }
       } catch (error) {
-        console.error('Gagal mengambil riwayat di mobile:', error);
+        console.error('Gagal mengambil riwayat:', error);
       } finally {
         setLoading(false);
       }
     };
-
     fetchInvitations();
-  }, [session]);
+  }, [session, refreshKey]);
 
   if (!session || (invitations.length === 0 && !loading)) return null;
 
@@ -54,7 +59,13 @@ export default function RecentInvitations() {
   };
 
   return (
-    <View style={[styles.section, { backgroundColor: darkMode ? 'rgba(31,41,55,0.35)' : '#f9fafb' }]}>
+    <View
+      style={[
+        styles.section,
+        { backgroundColor: darkMode ? 'rgba(31,41,55,0.5)' : '#f9fafb' },
+      ]}
+    >
+      {/* Header */}
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: darkMode ? '#fff' : '#111827' }]}>
@@ -67,12 +78,14 @@ export default function RecentInvitations() {
         <TouchableOpacity
           style={styles.headerLink}
           onPress={() => router.push('/(tabs)/profile')}
+          activeOpacity={0.8}
         >
           <Text style={styles.headerLinkText}>Lihat Semua</Text>
           <MaterialIcons name="arrow-forward" size={16} color="#6366f1" />
         </TouchableOpacity>
       </View>
 
+      {/* Konten */}
       {loading ? (
         <ActivityIndicator size="small" color="#6366f1" style={{ marginTop: 12 }} />
       ) : (
@@ -81,18 +94,19 @@ export default function RecentInvitations() {
             const content = invitation.tbl_t_invitation_content || {};
             const pria = content.groom_name || 'Pria';
             const wanita = content.bride_name || 'Wanita';
-
             return (
               <View
                 key={invitation.id_invitation}
                 style={[
                   styles.card,
                   {
-                    backgroundColor: darkMode ? '#1f2937' : '#fff',
+                    backgroundColor: darkMode ? '#1f2937' : '#ffffff',
                     borderColor: darkMode ? '#374151' : '#f3f4f6',
+                    shadowColor: darkMode ? '#000' : '#6366f1',
                   },
                 ]}
               >
+                {/* Top row: tanggal + ikon */}
                 <View style={styles.cardTop}>
                   <View style={styles.dateBadge}>
                     <Text style={styles.dateText}>
@@ -102,23 +116,35 @@ export default function RecentInvitations() {
                   <MaterialIcons name="drafts" size={18} color="#9ca3af" />
                 </View>
 
+                {/* Nama */}
                 <Text style={[styles.cardTitle, { color: darkMode ? '#fff' : '#1f2937' }]}>
                   {pria} & {wanita}
                 </Text>
 
+                {/* Tombol */}
                 <View style={styles.actions}>
                   <TouchableOpacity
-                    style={styles.previewButton}
+                    style={styles.previewWrap}
                     onPress={() => handleOpenInvitation(invitation.invitation_link)}
+                    activeOpacity={0.88}
                   >
-                    <Text style={styles.previewText}>Lihat Hasil</Text>
+                    <LinearGradient
+                      colors={['#4f46e5', '#6366f1']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.previewButton}
+                    >
+                      <Text style={styles.previewText}>Lihat Hasil</Text>
+                    </LinearGradient>
                   </TouchableOpacity>
+
                   <TouchableOpacity
                     style={[
                       styles.settingsButton,
                       { backgroundColor: darkMode ? '#374151' : '#f3f4f6' },
                     ]}
                     onPress={() => router.push('/(tabs)/profile')}
+                    activeOpacity={0.8}
                   >
                     <MaterialIcons
                       name="settings"
@@ -139,23 +165,24 @@ export default function RecentInvitations() {
 const styles = StyleSheet.create({
   section: {
     paddingHorizontal: 24,
-    paddingVertical: 28,
+    paddingVertical: 32,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
     gap: 14,
-    marginBottom: 22,
+    marginBottom: 24,
   },
   title: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '800',
     marginBottom: 6,
+    letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: 14,
-    lineHeight: 22,
+    fontSize: 13,
+    lineHeight: 20,
   },
   headerLink: {
     flexDirection: 'row',
@@ -174,6 +201,10 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     padding: 18,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
   },
   cardTop: {
     flexDirection: 'row',
@@ -193,21 +224,25 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   cardTitle: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: '800',
     marginBottom: 16,
+    letterSpacing: -0.2,
   },
   actions: {
     flexDirection: 'row',
     gap: 10,
   },
-  previewButton: {
+  previewWrap: {
     flex: 1,
-    minHeight: 42,
     borderRadius: 12,
-    backgroundColor: '#4f46e5',
+    overflow: 'hidden',
+  },
+  previewButton: {
+    minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 12,
   },
   previewText: {
     color: '#fff',
@@ -215,8 +250,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   settingsButton: {
-    width: 42,
-    height: 42,
+    width: 44,
+    height: 44,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',

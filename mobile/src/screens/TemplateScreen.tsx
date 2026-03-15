@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -6,202 +6,243 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  Dimensions,
-  SafeAreaView,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useDarkMode } from '../context/DarkModeContext';
-import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { WEDDING_TEMPLATES } from '../constants/data';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 
-const { width } = Dimensions.get('window');
+const weddingTemplates: Record<string, { id: number; title: string; description: string; image: any }[]> = {
+  elegan: [
+    { id: 1, title: 'Elegan Tradisional', description: 'Nuansa mewah dengan motif etnik dan warna keemasan.', image: require('../../assets/templates/elegan_1.webp') },
+    { id: 2, title: 'Elegan Minimalis', description: 'Tampilan lembut dengan dominasi putih dan dekorasi sederhana.', image: require('../../assets/templates/elegan_2.jpg') },
+    { id: 7, title: 'Elegan Mewah', description: 'Latar hitam berkelas dengan aksen emas yang glamor.', image: require('../../assets/templates/elegan_3.webp') },
+  ],
+  formal: [
+    { id: 3, title: 'Formal Klasik', description: 'Ornamen detail dengan nuansa resmi dan berwibawa.', image: require('../../assets/templates/formal_1.webp') },
+    { id: 4, title: 'Formal Modern', description: 'Tampilan sederhana, bersih, namun tetap formal.', image: require('../../assets/templates/formal_2.webp') },
+    { id: 9, title: 'Formal Natural', description: 'Nuansa lembut dengan sentuhan alam yang tetap anggun.', image: require('../../assets/templates/formal_3.webp') },
+  ],
+  simple: [
+    { id: 10, title: 'Simple Clean', description: 'Desain putih bersih dengan tata letak rapi dan elegan.', image: require('../../assets/templates/simple_1.webp') },
+    { id: 11, title: 'Simple Bold', description: 'Dominasi warna kuat dengan kontras tinggi yang berani.', image: require('../../assets/templates/simple_2.webp') },
+    { id: 12, title: 'Simple Garis & Bunga', description: 'Desain hitam-putih dengan ilustrasi garis dan motif bunga.', image: require('../../assets/templates/simple_3.webp') },
+  ],
+};
+
+const categoryLabel: Record<string, string> = {
+  elegan: 'Elegan',
+  formal: 'Formal',
+  simple: 'Simple',
+};
 
 export default function TemplateScreen() {
   const { darkMode } = useDarkMode();
   const router = useRouter();
-  const [activeCategory, setActiveCategory] = useState('elegan');
 
-  const categories = [
-    { id: 'elegan', label: 'Elegan', icon: 'auto-awesome' },
-    { id: 'formal', label: 'Formal', icon: 'business-center' },
-    { id: 'simple', label: 'Simple', icon: 'filter-hdr' },
-  ];
-
-  const TemplateCard = ({ item }: any) => (
-    <TouchableOpacity 
-      style={[styles.card, { backgroundColor: darkMode ? '#1f2937' : '#fff' }]}
-      onPress={() => router.push(`/template-usage/${item.id}`)}
-    >
-      <Image 
-        source={typeof item.image === 'string' ? { uri: item.image } : item.image} 
-        style={styles.cardImage} 
-      />
-      <View style={styles.cardContent}>
-        <Text style={[styles.cardTitle, { color: darkMode ? '#fff' : '#111827' }]} numberOfLines={1}>
-          {item.title}
-        </Text>
-        <Text style={[styles.cardDesc, { color: darkMode ? '#9ca3af' : '#6b7280' }]} numberOfLines={2}>
-          {item.desc}
-        </Text>
-        <TouchableOpacity 
-          style={styles.useButton}
-          onPress={() => router.push(`/template-usage/${item.id}`)}
-        >
-          <Text style={styles.useButtonText}>Gunakan</Text>
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
-  );
+  const bg = darkMode ? '#111827' : '#f9fafb';
+  const cardBg = darkMode ? '#1f2937' : '#ffffff';
+  const borderColor = darkMode ? '#374151' : '#f3f4f6';
+  const textPrimary = darkMode ? '#ffffff' : '#111827';
+  const textSecondary = darkMode ? '#d1d5db' : '#4b5563';
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: darkMode ? '#111827' : '#f9fafb' }]}>
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => router.back()}
+    <View style={{ flex: 1, backgroundColor: bg }}>
+      <Navbar />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingTop: 92 }}
+      >
+        {/* ── Header ────────────────────────────────── */}
+        <LinearGradient
+          colors={darkMode ? ['#111827', '#1f2937'] : ['#f9fafb', '#ffffff']}
+          style={styles.headerSection}
         >
-          <MaterialIcons name="arrow-back" size={24} color={darkMode ? '#fff' : '#111827'} />
-        </TouchableOpacity>
-        <Text style={[styles.title, { color: darkMode ? '#fff' : '#111827' }]}>Pilih Desain</Text>
-        <Text style={styles.subtitle}>Pilih desain yang paling sesuai dengan kisah cinta Anda.</Text>
-      </View>
+          <Text style={[styles.pageTitle, { color: textPrimary }]}>
+            Template Undangan{' '}
+            <Text style={styles.titleAccent}>Pernikahan</Text>
+          </Text>
 
-      <View style={styles.categoryContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
-          {categories.map((cat) => (
-            <TouchableOpacity
-              key={cat.id}
-              onPress={() => setActiveCategory(cat.id)}
-              style={[
-                styles.categoryTab,
-                activeCategory === cat.id && styles.categoryTabActive,
-                { backgroundColor: activeCategory === cat.id ? '#6366f1' : (darkMode ? '#1f2937' : '#fff') }
-              ]}
-            >
-              <MaterialIcons 
-                name={cat.icon as any} 
-                size={20} 
-                color={activeCategory === cat.id ? '#fff' : (darkMode ? '#9ca3af' : '#6b7280')} 
-              />
-              <Text style={[
-                styles.categoryText,
-                { color: activeCategory === cat.id ? '#fff' : (darkMode ? '#9ca3af' : '#6b7280') }
-              ]}>
-                {cat.label}
+          {/* Dekorator garis */}
+          <View style={styles.dividerWrap}>
+            <LinearGradient
+              colors={['#6366f1', '#a855f7']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.dividerLine}
+            />
+            <View style={[styles.dividerDot, { backgroundColor: darkMode ? '#1f2937' : '#f9fafb' }]} />
+          </View>
+
+          <Text style={[styles.pageSubtitle, { color: textSecondary }]}>
+            Pilih template undangan pernikahan dengan berbagai gaya yang sesuai dengan selera Anda.
+          </Text>
+        </LinearGradient>
+
+        {/* ── Semua Kategori ────────────────────────── */}
+        <View style={[styles.content, { backgroundColor: bg }]}>
+          {Object.entries(weddingTemplates).map(([style, templates]) => (
+            <View key={style} style={styles.categorySection}>
+              {/* Judul kategori */}
+              <Text style={[styles.categoryTitle, { color: textPrimary }]}>
+                {categoryLabel[style]}
               </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
 
-      <ScrollView contentContainerStyle={styles.templateGrid} showsVerticalScrollIndicator={false}>
-        <View style={styles.gridWrapper}>
-          {WEDDING_TEMPLATES[activeCategory].map((item: any) => (
-            <TemplateCard key={item.id} item={item} />
+              {/* Grid kartu */}
+              <View style={styles.grid}>
+                {templates.map((template) => (
+                  <TouchableOpacity
+                    key={template.id}
+                    style={[
+                      styles.card,
+                      {
+                        backgroundColor: cardBg,
+                        borderColor,
+                        shadowColor: darkMode ? '#000' : '#6366f1',
+                      },
+                    ]}
+                    onPress={() => router.push(`/template-usage/${template.id}` as never)}
+                    activeOpacity={0.88}
+                  >
+                    {/* Top accent bar */}
+                    <LinearGradient
+                      colors={['#667eea', '#764ba2']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.cardAccent}
+                    />
+
+                    {/* Gambar preview */}
+                    <View style={[styles.imageWrap, { backgroundColor: darkMode ? '#374151' : '#f9fafb' }]}>
+                      <Image
+                        source={template.image}
+                        style={styles.cardImage}
+                        resizeMode="contain"
+                      />
+                    </View>
+
+                    {/* Info */}
+                    <View style={styles.cardBody}>
+                      <Text style={[styles.cardTitle, { color: textPrimary }]}>
+                        {template.title}
+                      </Text>
+                      <Text style={[styles.cardDesc, { color: textSecondary }]}>
+                        {template.description}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
           ))}
         </View>
+
+        <Footer />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    padding: 24,
-  },
-  backButton: {
-    marginBottom: 16,
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  categoryContainer: {
-    marginBottom: 16,
-  },
-  categoryScroll: {
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  categoryTab: {
-    flexDirection: 'row',
+  /* ── Header ── */
+  headerSection: {
+    paddingHorizontal: 24,
+    paddingTop: 40,
+    paddingBottom: 32,
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
   },
-  categoryTabActive: {
-    shadowColor: '#6366f1',
-    shadowOpacity: 0.3,
+  pageTitle: {
+    fontSize: 30,
+    fontWeight: '800',
+    textAlign: 'center',
+    letterSpacing: -0.4,
+    marginBottom: 16,
   },
-  categoryText: {
-    fontSize: 14,
-    fontWeight: '600',
+  titleAccent: {
+    color: '#6366f1',
   },
-  templateGrid: {
-    padding: 20,
+  dividerWrap: {
+    width: 112,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
   },
-  gridWrapper: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  dividerLine: {
+    width: '100%',
+    height: 4,
+    borderRadius: 999,
+  },
+  dividerDot: {
+    position: 'absolute',
+    width: 18,
+    height: 18,
+    borderRadius: 999,
+    borderWidth: 4,
+    borderColor: '#6366f1',
+  },
+  pageSubtitle: {
+    fontSize: 15,
+    lineHeight: 24,
+    textAlign: 'center',
+    maxWidth: 320,
+  },
+
+  /* ── Content ── */
+  content: {
+    paddingHorizontal: 20,
+    paddingBottom: 8,
+  },
+  categorySection: {
+    marginBottom: 40,
+  },
+  categoryTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    marginBottom: 16,
+    letterSpacing: -0.3,
+    textTransform: 'capitalize',
+  },
+  grid: {
     gap: 16,
-    justifyContent: 'space-between',
   },
+
+  /* ── Card ── */
   card: {
-    width: (width - 56) / 2,
-    borderRadius: 20,
+    borderRadius: 22,
+    borderWidth: 1,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 10,
+    shadowRadius: 12,
     elevation: 4,
-    marginBottom: 8,
+  },
+  cardAccent: {
+    height: 4,
+  },
+  imageWrap: {
+    width: '100%',
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
   },
   cardImage: {
     width: '100%',
-    height: 200,
-    resizeMode: 'cover',
+    height: '100%',
   },
-  cardContent: {
-    padding: 12,
+  cardBody: {
+    padding: 18,
   },
   cardTitle: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    marginBottom: 4,
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 6,
+    letterSpacing: -0.2,
   },
   cardDesc: {
-    fontSize: 11,
-    marginBottom: 12,
-    lineHeight: 16,
-  },
-  useButton: {
-    backgroundColor: '#f3f4f6',
-    paddingVertical: 8,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  useButtonText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#6366f1',
+    fontSize: 14,
+    lineHeight: 22,
   },
 });

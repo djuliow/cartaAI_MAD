@@ -76,6 +76,13 @@ class BulkGuestCreate(BaseModel):
 class BulkDeleteRequest(BaseModel):
     slugs: List[str]
 
+# --- Helpers ---
+def empty_to_none(value):
+    """Convert empty string to None to avoid DB type errors (e.g. time columns)."""
+    if isinstance(value, str) and value.strip() == '':
+        return None
+    return value
+
 # --- Endpoints ---
 
 @router.get("/guests/{slug}")
@@ -193,12 +200,12 @@ async def generate_and_upload_invitation(request: InvitationRequest, current_use
             "invitation_type": request.jenisUndangan,
             "theme_color": request.temaWarna,
             "custom_font": request.customFont,
-            "akad_date": request.tanggalAcara,
-            "akad_time": request.waktuAcara,
-            "akad_location": request.lokasiAcara,
-            "reception_time": request.waktuResepsi,
-            "reception_location": request.tempatResepsi,
-            "music_url": request.musik,
+            "akad_date": empty_to_none(request.tanggalAcara),
+            "akad_time": empty_to_none(request.waktuAcara),
+            "akad_location": empty_to_none(request.lokasiAcara),
+            "reception_time": empty_to_none(request.waktuResepsi),
+            "reception_location": empty_to_none(request.tempatResepsi),
+            "music_url": empty_to_none(request.musik),
             "groom_photo": request.fotoMempelaiPria,
             "bride_photo": request.fotoMempelaiWanita,
             "special_notes": request.catatanKhusus,
@@ -292,11 +299,11 @@ async def generate_and_upload_invitation_free(request: InvitationRequest, curren
             "religion": request.agama,
             "invitation_type": "Free",
             "theme_color": "Standard",
-            "akad_date": request.tanggalAcara,
-            "akad_time": request.waktuAcara,
-            "akad_location": request.lokasiAcara,
-            "reception_time": request.waktuResepsi,
-            "reception_location": request.tempatResepsi,
+            "akad_date": empty_to_none(request.tanggalAcara),
+            "akad_time": empty_to_none(request.waktuAcara),
+            "akad_location": empty_to_none(request.lokasiAcara),
+            "reception_time": empty_to_none(request.waktuResepsi),
+            "reception_location": empty_to_none(request.tempatResepsi),
             "special_notes": request.catatanKhusus,
             "is_active": True,
             "created_by": user_id,

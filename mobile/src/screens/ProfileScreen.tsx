@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 import {
   ActivityIndicator,
   Alert,
@@ -76,13 +77,15 @@ export default function ProfileScreen() {
           ).length,
         };
 
-  useEffect(() => {
-    if (!session) {
-      router.replace('/login');
-      return;
-    }
-    fetchData();
-  }, [session]);
+  useFocusEffect(
+    useCallback(() => {
+      if (!session) {
+        router.replace('/login');
+        return;
+      }
+      fetchData();
+    }, [session])
+  );
 
   const fetchData = async () => {
     if (!session?.access_token) return;
@@ -250,14 +253,23 @@ export default function ProfileScreen() {
     value,
     icon,
     colors,
+    accentColors,
   }: {
     title: string;
     value: number;
     icon: keyof typeof MaterialIcons.glyphMap;
     colors: [string, string];
+    accentColors: [string, string];
   }) => (
     <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-      <View style={[styles.statIcon, { backgroundColor: darkMode ? '#111827' : colors[0] }]}>
+      {/* Top accent bar */}
+      <LinearGradient
+        colors={accentColors as [string, string]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.statAccent}
+      />
+      <View style={[styles.statIcon, { backgroundColor: darkMode ? '#0f172a' : colors[0] }]}>
         <MaterialIcons name={icon} size={20} color={colors[1]} />
       </View>
       <View style={{ flex: 1 }}>
@@ -333,10 +345,10 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.statsGrid}>
-          <StatCard title="Total Undangan" value={invitations.length} icon="description" colors={['#eff6ff', '#2563eb']} />
-          <StatCard title="Total RSVP" value={dynamicStats.total} icon="group" colors={['#faf5ff', '#9333ea']} />
-          <StatCard title="Tamu Hadir" value={dynamicStats.hadir} icon="check-circle" colors={['#f0fdf4', '#16a34a']} />
-          <StatCard title="Tamu Berhalangan" value={dynamicStats.tidak_hadir} icon="cancel" colors={['#fef2f2', '#dc2626']} />
+          <StatCard title="Total Undangan" value={invitations.length} icon="description" colors={['#eff6ff', '#2563eb']} accentColors={['#3b82f6', '#6366f1']} />
+          <StatCard title="Total RSVP" value={dynamicStats.total} icon="group" colors={['#faf5ff', '#9333ea']} accentColors={['#8b5cf6', '#a855f7']} />
+          <StatCard title="Tamu Hadir" value={dynamicStats.hadir} icon="check-circle" colors={['#f0fdf4', '#16a34a']} accentColors={['#10b981', '#34d399']} />
+          <StatCard title="Tamu Berhalangan" value={dynamicStats.tidak_hadir} icon="cancel" colors={['#fef2f2', '#dc2626']} accentColors={['#ef4444', '#f87171']} />
         </View>
 
         <View style={[styles.panel, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -396,6 +408,13 @@ export default function ProfileScreen() {
                       key={invitation.id_invitation}
                       style={[styles.invCard, { backgroundColor: theme.soft, borderColor: theme.border }]}
                     >
+                      {/* Top accent bar identical to web */}
+                      <LinearGradient
+                        colors={['#667eea', '#764ba2']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.invAccent}
+                      />
                       <View style={styles.invHeader}>
                         <View style={styles.activeBadge}>
                           <Text style={styles.activeBadgeText}>AKTIF</Text>
@@ -579,7 +598,8 @@ const styles = StyleSheet.create({
   logoutButton: { minWidth: 110, borderWidth: 1, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, paddingHorizontal: 14 },
   logoutText: { color: '#ef4444', fontSize: 14, fontWeight: '800' },
   statsGrid: { gap: 12, marginBottom: 20 },
-  statCard: { borderWidth: 1, borderRadius: 18, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  statCard: { borderWidth: 1, borderRadius: 18, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, overflow: 'hidden' },
+  statAccent: { position: 'absolute', top: 0, left: 0, right: 0, height: 3 },
   statIcon: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   statTitle: { fontSize: 12, fontWeight: '600' },
   statValue: { fontSize: 22, fontWeight: '800', marginTop: 2 },
@@ -593,7 +613,8 @@ const styles = StyleSheet.create({
   filterChipActive: { borderColor: '#6366f1', backgroundColor: '#eef2ff' },
   filterChipText: { fontSize: 12, fontWeight: '700' },
   contentArea: { paddingHorizontal: 16, paddingBottom: 16 },
-  invCard: { borderWidth: 1, borderRadius: 18, padding: 16, marginBottom: 12 },
+  invCard: { borderWidth: 1, borderRadius: 18, padding: 16, marginBottom: 12, overflow: 'hidden' },
+  invAccent: { position: 'absolute', top: 0, left: 0, right: 0, height: 3 },
   invHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   activeBadge: { backgroundColor: '#e0e7ff', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   activeBadgeText: { color: '#4338ca', fontSize: 10, fontWeight: '800' },

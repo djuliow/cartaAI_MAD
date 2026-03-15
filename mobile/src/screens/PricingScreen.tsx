@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   ActivityIndicator,
 } from 'react-native';
 import { useDarkMode } from '../context/DarkModeContext';
@@ -13,20 +12,54 @@ import { useAuth } from '../context/AuthContext';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { PRICING_PLANS } from '../constants/data';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
+
+const pricingPlans = [
+  {
+    id: 'free',
+    name: 'Basic',
+    price: 'Gratis',
+    description: 'Untuk memulai',
+    buttonText: 'Mulai Gratis',
+    isPopular: false,
+    features: ['Desain terbatas', 'Fitur dasar', 'Hingga 100 undangan'],
+  },
+  {
+    id: 'premium_monthly',
+    name: 'Premium',
+    price: 'Rp 99rb',
+    period: '/bulan',
+    description: 'Untuk acara spesial',
+    buttonText: 'Pilih Paket Premium',
+    isPopular: true,
+    features: [
+      'Semua desain premium',
+      'Fitur lengkap & interaktif',
+      'Hingga 500 undangan',
+      'Dukungan prioritas',
+    ],
+  },
+];
 
 export default function PricingScreen() {
   const { darkMode } = useDarkMode();
   const { session } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleAction = (plan: any) => {
-    if (plan.id !== 'free' && !session) {
+  const bg = darkMode ? '#111827' : '#f9fafb';
+  const cardBg = darkMode ? '#1f2937' : '#ffffff';
+  const textPrimary = darkMode ? '#ffffff' : '#111827';
+  const textSecondary = darkMode ? '#d1d5db' : '#4b5563';
+  const textMuted = darkMode ? '#9ca3af' : '#6b7280';
+
+  const handleAction = async (plan: typeof pricingPlans[0]) => {
+    if (!session) {
       router.push('/login');
       return;
     }
-    
     if (plan.id === 'free') {
       router.push('/chat');
     } else {
@@ -35,80 +68,116 @@ export default function PricingScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: darkMode ? '#111827' : '#f9fafb' }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton} 
-            onPress={() => router.back()}
-          >
-            <MaterialIcons name="arrow-back" size={24} color={darkMode ? '#fff' : '#111827'} />
-          </TouchableOpacity>
-          <Text style={[styles.title, { color: darkMode ? '#fff' : '#111827' }]}>
-            Paket <Text style={styles.brand}>Harga</Text>
-          </Text>
-          <View style={styles.dividerContainer}>
-            <View style={styles.dividerLine} />
+    <View style={{ flex: 1, backgroundColor: bg }}>
+      <Navbar />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingTop: 92 }}
+      >
+        {/* ── Header ────────────────────────────────── */}
+        <LinearGradient
+          colors={darkMode ? ['#111827', '#1f2937'] : ['#f9fafb', '#ffffff']}
+          style={styles.headerSection}
+        >
+          {/* Dekorator garis */}
+          <View style={styles.dividerWrap}>
+            <LinearGradient
+              colors={['#6366f1', '#a855f7']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.dividerLine}
+            />
+            <View style={[styles.dividerDot, { backgroundColor: darkMode ? '#1f2937' : '#f9fafb' }]} />
           </View>
-          <Text style={styles.subtitle}>
-            Pilih paket yang paling sesuai dengan kebutuhan Anda.
-          </Text>
-        </View>
 
-        <View style={styles.cardsContainer}>
-          {PRICING_PLANS.map((plan, index) => (
-            <View 
-              key={index} 
-              style={[
-                styles.cardWrapper, 
-                plan.isPopular && styles.cardWrapperPopular
-              ]}
-            >
-              {plan.isPopular && (
-                <View style={styles.popularBadgeContainer}>
+          <Text style={[styles.pageTitle, { color: textPrimary }]}>
+            Fitur Paket yang{' '}
+            <Text style={styles.titleAccent}>Tersedia</Text>
+          </Text>
+          <Text style={[styles.pageSubtitle, { color: textSecondary }]}>
+            Pilih paket yang paling sesuai dengan kebutuhan Anda
+          </Text>
+
+          {!!error && (
+            <Text style={styles.errorText}>Error: {error}</Text>
+          )}
+        </LinearGradient>
+
+        {/* ── Kartu Paket ───────────────────────────── */}
+        <View style={[styles.cardsSection, { backgroundColor: bg }]}>
+          {pricingPlans.map((plan, index) => (
+            <View key={index} style={styles.planWrapper}>
+              {/* Gradient border */}
+              <LinearGradient
+                colors={
+                  plan.isPopular
+                    ? ['#667eea', '#764ba2']
+                    : ['#e0e7ff', '#f3e8ff']
+                }
+                style={styles.planBorder}
+              >
+                <View style={[styles.planCard, { backgroundColor: cardBg }]}>
+                  {/* Top accent bar */}
                   <LinearGradient
                     colors={['#667eea', '#764ba2']}
-                    style={styles.popularBadge}
-                  >
-                    <Text style={styles.popularBadgeText}>Populer</Text>
-                  </LinearGradient>
-                </View>
-              )}
-              <View style={[styles.card, { backgroundColor: darkMode ? '#1f2937' : '#fff' }]}>
-                <LinearGradient
-                  colors={plan.isPopular ? ['#667eea', '#764ba2'] : ['#e5e7eb', '#d1d5db']}
-                  style={styles.cardAccent}
-                />
-                <View style={styles.cardContent}>
-                  <Text style={[styles.planName, { color: darkMode ? '#fff' : '#111827' }]}>
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.topAccent}
+                  />
+
+                  {/* Badge Populer */}
+                  {plan.isPopular && (
+                    <View style={styles.popularBadgeWrap}>
+                      <LinearGradient
+                        colors={['#667eea', '#764ba2']}
+                        style={styles.popularBadge}
+                      >
+                        <Text style={styles.popularText}>Populer</Text>
+                      </LinearGradient>
+                    </View>
+                  )}
+
+                  {/* Nama & Harga */}
+                  <Text style={[styles.planName, { color: textPrimary }]}>
                     {plan.name}
                   </Text>
-                  <Text style={[styles.planPrice, { color: darkMode ? '#fff' : '#111827' }]}>
+                  <Text style={[styles.planPrice, { color: textPrimary }]}>
                     {plan.price}
-                    {plan.period && <Text style={styles.planPeriod}>{plan.period}</Text>}
+                    {plan.period ? (
+                      <Text style={[styles.planPeriod, { color: textMuted }]}>
+                        {plan.period}
+                      </Text>
+                    ) : null}
                   </Text>
-                  <Text style={styles.planDesc}>{plan.description}</Text>
+                  <Text style={[styles.planDesc, { color: textMuted }]}>
+                    {plan.description}
+                  </Text>
 
+                  {/* Tombol aksi */}
                   <TouchableOpacity
-                    style={styles.actionButtonContainer}
                     onPress={() => handleAction(plan)}
                     disabled={loading}
+                    style={styles.actionWrap}
+                    activeOpacity={0.88}
                   >
                     <LinearGradient
-                      colors={plan.isPopular ? ['#667eea', '#764ba2'] : ['#9ca3af', '#6b7280']}
+                      colors={['#667eea', '#764ba2']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
                       style={styles.actionButton}
                     >
                       {loading ? (
-                        <ActivityIndicator color="#fff" />
+                        <ActivityIndicator color="#fff" size="small" />
                       ) : (
-                        <Text style={styles.actionButtonText}>{plan.buttonText}</Text>
+                        <Text style={styles.actionText}>{plan.buttonText}</Text>
                       )}
                     </LinearGradient>
                   </TouchableOpacity>
 
+                  {/* Daftar fitur */}
                   <View style={styles.featuresList}>
-                    {plan.features.map((feature: string, fIndex: number) => (
-                      <View key={fIndex} style={styles.featureItem}>
+                    {plan.features.map((feature, fi) => (
+                      <View key={fi} style={styles.featureRow}>
                         <MaterialIcons name="check-circle" size={20} color="#10b981" />
                         <Text style={[styles.featureText, { color: darkMode ? '#d1d5db' : '#374151' }]}>
                           {feature}
@@ -117,147 +186,167 @@ export default function PricingScreen() {
                     ))}
                   </View>
                 </View>
-              </View>
+              </LinearGradient>
             </View>
           ))}
         </View>
-        <View style={{ height: 40 }} />
+
+        <Footer />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 24,
-  },
-  header: {
+  /* ── Header ── */
+  headerSection: {
+    paddingHorizontal: 24,
+    paddingTop: 40,
+    paddingBottom: 32,
     alignItems: 'center',
-    marginBottom: 40,
   },
-  backButton: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    width: 44,
-    height: 44,
+  dividerWrap: {
+    width: 112,
+    height: 22,
+    alignItems: 'center',
     justifyContent: 'center',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  brand: {
-    color: '#6366f1',
-  },
-  dividerContainer: {
-    alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   dividerLine: {
-    width: 60,
+    width: '100%',
     height: 4,
-    backgroundColor: '#6366f1',
-    borderRadius: 2,
+    borderRadius: 999,
   },
-  subtitle: {
-    color: '#6b7280',
+  dividerDot: {
+    position: 'absolute',
+    width: 18,
+    height: 18,
+    borderRadius: 999,
+    borderWidth: 4,
+    borderColor: '#6366f1',
+  },
+  pageTitle: {
+    fontSize: 28,
+    fontWeight: '800',
     textAlign: 'center',
-    fontSize: 16,
+    letterSpacing: -0.3,
+    marginBottom: 12,
   },
-  cardsContainer: {
-    gap: 32,
+  titleAccent: {
+    color: '#6366f1',
   },
-  cardWrapper: {
-    borderRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 4,
-    position: 'relative',
+  pageSubtitle: {
+    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 24,
+    maxWidth: 300,
   },
-  cardWrapperPopular: {
+  errorText: {
+    marginTop: 12,
+    color: '#ef4444',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+
+  /* ── Kartu ── */
+  cardsSection: {
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    gap: 28,
+  },
+  planWrapper: {
+    paddingTop: 12,
     shadowColor: '#6366f1',
-    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
     shadowRadius: 16,
     elevation: 8,
   },
-  popularBadgeContainer: {
-    position: 'absolute',
-    top: -12,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    zIndex: 10,
+  planBorder: {
+    borderRadius: 22,
+    padding: 4,
   },
-  popularBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  popularBadgeText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 12,
-  },
-  card: {
-    borderRadius: 24,
+  planCard: {
+    borderRadius: 18,
+    padding: 24,
     overflow: 'hidden',
   },
-  cardAccent: {
-    height: 6,
+  topAccent: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 4,
   },
-  cardContent: {
-    padding: 24,
+  popularBadgeWrap: {
+    alignItems: 'center',
+    marginTop: -16,
+    marginBottom: 12,
+  },
+  popularBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+  },
+  popularText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
   planName: {
     fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    fontWeight: '800',
+    marginBottom: 10,
+    letterSpacing: -0.3,
   },
   planPrice: {
     fontSize: 36,
-    fontWeight: 'bold',
+    fontWeight: '800',
+    letterSpacing: -0.5,
     marginBottom: 4,
   },
   planPeriod: {
-    fontSize: 16,
-    fontWeight: 'normal',
-    color: '#6b7280',
+    fontSize: 17,
+    fontWeight: '500',
   },
   planDesc: {
     fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 24,
+    marginBottom: 22,
   },
-  actionButtonContainer: {
+  actionWrap: {
     borderRadius: 12,
     overflow: 'hidden',
-    marginBottom: 32,
+    marginBottom: 24,
+    shadowColor: '#667eea',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 5,
   },
   actionButton: {
-    paddingVertical: 14,
+    minHeight: 50,
     alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
   },
-  actionButtonText: {
+  actionText: {
     color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.2,
   },
   featuresList: {
-    gap: 16,
+    gap: 14,
   },
-  featureItem: {
+  featureRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
   featureText: {
-    fontSize: 15,
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
   },
 });

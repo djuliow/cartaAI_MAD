@@ -110,19 +110,20 @@ export default function Navbar() {
       </BlurView>
 
       {isMenuOpen ? (
-        <View style={styles.menuOverlay}>
-          <BlurView
-            intensity={95}
-            tint={darkMode ? 'dark' : 'light'}
-            style={[
-              styles.menuPanel,
-              {
-                backgroundColor: theme.panel,
-                borderColor: theme.border,
-              },
-            ]}
-          >
-            <View style={styles.menuContent}>
+        <BlurView
+          intensity={95}
+          tint={darkMode ? 'dark' : 'light'}
+          style={[
+            styles.menuPanel,
+            {
+              backgroundColor: theme.panel,
+              borderTopColor: theme.border,
+            },
+          ]}
+        >
+          <View style={styles.menuContent}>
+            {/* Navigasi */}
+            <View style={styles.menuSection}>
               {navLinks.map((item) => {
                 const active = isActivePath(item.path);
                 return (
@@ -132,92 +133,104 @@ export default function Navbar() {
                     style={styles.linkButton}
                     activeOpacity={0.8}
                   >
-                    <Text
-                      style={[
-                        styles.linkText,
-                        { color: active ? theme.active : theme.text },
-                      ]}
-                    >
-                      {item.label}
-                    </Text>
+                    <View style={styles.linkRow}>
+                      <Text
+                        style={[
+                          styles.linkText,
+                          { color: active ? theme.active : theme.text },
+                          active && styles.linkTextActive,
+                        ]}
+                      >
+                        {item.label}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
                 );
               })}
-
-              <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-              {session ? (
-                <View style={styles.authGroup}>
-                  {isPremium ? (
-                    <TouchableOpacity
-                      onPress={() => handleNavigate('/(tabs)/generator')}
-                      style={styles.ctaWrapper}
-                      activeOpacity={0.9}
-                    >
-                      <LinearGradient
-                        colors={['#facc15', '#f97316']}
-                        style={styles.ctaButton}
-                      >
-                        <Text style={styles.ctaText}>Premium Generator</Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity
-                      onPress={() => handleNavigate('/(tabs)/generator')}
-                      style={[styles.freeButton, { backgroundColor: theme.freeBg }]}
-                      activeOpacity={0.9}
-                    >
-                      <Text style={[styles.freeButtonText, { color: theme.freeText }]}>
-                        Free Generator
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-
-                  <TouchableOpacity
-                    onPress={() => handleNavigate('/(tabs)/profile')}
-                    style={styles.ctaWrapper}
-                    activeOpacity={0.9}
-                  >
-                    <LinearGradient
-                      colors={['#6366f1', '#7c3aed']}
-                      style={styles.ctaButton}
-                  >
-                      <Text style={styles.ctaText}>Profil</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View style={styles.authGroup}>
-                  <TouchableOpacity
-                    onPress={() => handleNavigate('/login')}
-                    style={styles.ctaWrapper}
-                    activeOpacity={0.9}
-                  >
-                    <LinearGradient
-                      colors={['#6366f1', '#7c3aed']}
-                      style={styles.ctaButton}
-                    >
-                      <Text style={styles.ctaText}>Masuk</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => handleNavigate('/register')}
-                    style={styles.ctaWrapper}
-                    activeOpacity={0.9}
-                  >
-                    <LinearGradient
-                      colors={['#6366f1', '#7c3aed']}
-                      style={styles.ctaButton}
-                    >
-                      <Text style={styles.ctaText}>Daftar</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
-              )}
             </View>
-          </BlurView>
-        </View>
+
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
+
+            {/* Auth Buttons */}
+            {session ? (
+              <View style={styles.authGroup}>
+                {isPremium ? (
+                  <TouchableOpacity
+                    onPress={() => handleNavigate('/(tabs)/generator')}
+                    style={styles.ctaWrapper}
+                    activeOpacity={0.9}
+                  >
+                    <LinearGradient
+                      colors={['#facc15', '#f97316']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.ctaButton}
+                    >
+                      <Text style={styles.ctaText}>Premium Generator</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    onPress={() => handleNavigate('/(tabs)/generator')}
+                    style={[styles.freeButton, { backgroundColor: theme.freeBg }]}
+                    activeOpacity={0.9}
+                  >
+                    <Text style={[styles.freeButtonText, { color: theme.freeText }]}>
+                      Free Generator
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                <TouchableOpacity
+                  onPress={() => handleNavigate('/(tabs)/profile')}
+                  style={styles.ctaWrapper}
+                  activeOpacity={0.9}
+                >
+                  <LinearGradient
+                    colors={['#8b5cf6', '#a855f7']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.ctaButton}
+                  >
+                    <Text style={styles.ctaText}>Profil</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.authGroup}>
+                <TouchableOpacity
+                  onPress={() => handleNavigate('/login')}
+                  style={styles.ctaWrapper}
+                  activeOpacity={0.9}
+                >
+                  <LinearGradient
+                    colors={['#8b5cf6', '#a855f7']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.ctaButton}
+                  >
+                    <Text style={styles.ctaText}>Masuk</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => handleNavigate('/register')}
+                  style={styles.ctaWrapper}
+                  activeOpacity={0.9}
+                >
+                  <LinearGradient
+                    colors={['#8b5cf6', '#a855f7']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.ctaButton}
+                  >
+                    <Text style={styles.ctaText}>Daftar</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </BlurView>
       ) : null}
     </View>
   );
@@ -266,36 +279,42 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  menuOverlay: {
-    paddingHorizontal: 12,
-    paddingTop: Platform.OS === 'android' ? 84 : 92,
-  },
   menuPanel: {
-    borderWidth: 1,
-    borderRadius: 20,
-    overflow: 'hidden',
+    borderTopWidth: 1,
     shadowColor: '#000',
-    shadowOpacity: 0.14,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 10,
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
   },
   menuContent: {
-    paddingHorizontal: 20,
-    paddingVertical: 18,
-    gap: 6,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    paddingBottom: 24,
+    gap: 0,
+  },
+  menuSection: {
+    gap: 0,
   },
   linkButton: {
-    paddingVertical: 12,
+    paddingVertical: 14,
+  },
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   linkText: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '500',
+  },
+  linkTextActive: {
+    fontWeight: '700',
   },
   divider: {
     height: 1,
-    marginTop: 8,
-    marginBottom: 12,
+    marginTop: 12,
+    marginBottom: 16,
   },
   authGroup: {
     gap: 10,
