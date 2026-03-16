@@ -19,6 +19,7 @@ import DateTimePicker, {
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 import { useDarkMode } from '../context/DarkModeContext';
@@ -202,6 +203,7 @@ export function GeneratorModeScreen({
 }: {
   mode?: GeneratorMode;
 }) {
+  const insets = useSafeAreaInsets();
   const { session, userProfile, loading } = useAuth();
   const { darkMode } = useDarkMode();
   const router = useRouter();
@@ -616,14 +618,14 @@ export function GeneratorModeScreen({
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.loadingContainer, { backgroundColor: theme.bg }]}>
+      <View style={[styles.loadingContainer, { backgroundColor: theme.bg, paddingTop: insets.top > 0 ? insets.top : 20 }]}>
         <ActivityIndicator size="large" color="#6366f1" />
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+    <View style={[styles.container, { backgroundColor: theme.bg, paddingTop: insets.top > 0 ? insets.top : 20 }]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View
@@ -1084,7 +1086,7 @@ export function GeneratorModeScreen({
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

@@ -21,6 +21,7 @@ import { useAuth } from '../context/AuthContext';
 import { useDarkMode } from '../context/DarkModeContext';
 import Navbar from '../components/Navbar';
 import { API_BASE_URL } from '../lib/api';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type ActiveTab = 'invitations' | 'rsvps' | 'messages';
 
@@ -28,6 +29,7 @@ export default function ProfileScreen() {
   const { session, logout } = useAuth();
   const { darkMode } = useDarkMode();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const [invitations, setInvitations] = useState<any[]>([]);
   const [rsvps, setRsvps] = useState<any[]>([]);
@@ -36,6 +38,7 @@ export default function ProfileScreen() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>('invitations');
   const [selectedInvitationFilter, setSelectedInvitationFilter] = useState('all');
+  const [isInvitationDropdownOpen, setIsInvitationDropdownOpen] = useState(false);
 
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [shareSlug, setShareSlug] = useState('');
@@ -309,7 +312,7 @@ export default function ProfileScreen() {
       <Navbar />
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 90 }]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
@@ -344,11 +347,103 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <View style={styles.statsGrid}>
-          <StatCard title="Total Undangan" value={invitations.length} icon="description" colors={['#eff6ff', '#2563eb']} accentColors={['#3b82f6', '#6366f1']} />
-          <StatCard title="Total RSVP" value={dynamicStats.total} icon="group" colors={['#faf5ff', '#9333ea']} accentColors={['#8b5cf6', '#a855f7']} />
-          <StatCard title="Tamu Hadir" value={dynamicStats.hadir} icon="check-circle" colors={['#f0fdf4', '#16a34a']} accentColors={['#10b981', '#34d399']} />
-          <StatCard title="Tamu Berhalangan" value={dynamicStats.tidak_hadir} icon="cancel" colors={['#fef2f2', '#dc2626']} accentColors={['#ef4444', '#f87171']} />
+        <View style={{ marginBottom: 20 }}>
+          <View style={{ gap: 12 }}>
+            <StatCard title="Total Undangan" value={invitations.length} icon="description" colors={['#eff6ff', '#2563eb']} accentColors={['#3b82f6', '#6366f1']} />
+            
+            {/* Filter Dropdown */}
+            {invitations.length > 0 && (
+              <View style={{ zIndex: 10 }}>
+                <Text style={[styles.filterLabel, { color: theme.secondary }]}>Pilih Undangan untuk Data RSVP:</Text>
+                <View style={[styles.dropdownContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <TouchableOpacity
+                    onPress={() => setIsInvitationDropdownOpen(!isInvitationDropdownOpen)}
+                    style={styles.dropdownHeader}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.dropdownHeaderText, { color: theme.text }]} numberOfLines={1}>
+                      {selectedInvitationFilter === 'all'
+                        ? 'Semua Undangan'
+                        : (() => {
+                            const inv = invitations.find((i) => String(i.id_invitation) === selectedInvitationFilter);
+                            if (!inv) return 'Pilih Undangan';
+                            const c = inv.tbl_t_invitation_content || {};
+                            return `${c.groom_name || 'Pria'} & ${c.bride_name || 'Wanita'}`;
+                          })()}
+                    </Text>
+                    <MaterialIcons
+                      name={isInvitationDropdownOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                      size={24}
+                      color={theme.secondary}
+                    />
+                  </TouchableOpacity>
+
+                  {isInvitationDropdownOpen && (
+                    <View style={[styles.dropdownMenu, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                      <TouchableOpacity
+                        style={[
+                          styles.dropdownItem,
+                          selectedInvitationFilter === 'all' && { backgroundColor: theme.soft },
+                        ]}
+                        onPress={() => {
+                          setSelectedInvitationFilter('all');
+                          setIsInvitationDropdownOpen(false);
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.dropdownItemText,
+                            selectedInvitationFilter === 'all' ? { color: '#4f46e5', fontWeight: '700' } : { color: theme.text },
+                          ]}
+                        >
+                          Semua Undangan
+                        </Text>
+                        {selectedInvitationFilter === 'all' && (
+                          <MaterialIcons name="check" size={18} color="#4f46e5" />
+                        )}
+                      </TouchableOpacity>
+
+                      {invitations.map((invitation) => {
+                        const content = invitation.tbl_t_invitation_content || {};
+                        const value = String(invitation.id_invitation);
+                        const active = selectedInvitationFilter === value;
+                        const title = (content.groom_name || 'Pria') + ' & ' + (content.bride_name || 'Wanita');
+
+                        return (
+                          <TouchableOpacity
+                            key={value}
+                            style={[
+                              styles.dropdownItem,
+                              active && { backgroundColor: theme.soft },
+                            ]}
+                            onPress={() => {
+                              setSelectedInvitationFilter(value);
+                              setIsInvitationDropdownOpen(false);
+                            }}
+                          >
+                            <Text
+                              style={[
+                                styles.dropdownItemText,
+                                active ? { color: '#4f46e5', fontWeight: '700' } : { color: theme.text },
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {title}
+                            </Text>
+                            {active && <MaterialIcons name="check" size={18} color="#4f46e5" />}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  )}
+                </View>
+              </View>
+            )}
+
+            <StatCard title="Total RSVP" value={dynamicStats.total} icon="group" colors={['#faf5ff', '#9333ea']} accentColors={['#8b5cf6', '#a855f7']} />
+            <StatCard title="Tamu Hadir" value={dynamicStats.hadir} icon="check-circle" colors={['#f0fdf4', '#16a34a']} accentColors={['#10b981', '#34d399']} />
+            <StatCard title="Tamu Berhalangan" value={dynamicStats.tidak_hadir} icon="cancel" colors={['#fef2f2', '#dc2626']} accentColors={['#ef4444', '#f87171']} />
+          </View>
         </View>
 
         <View style={[styles.panel, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -358,39 +453,7 @@ export default function ProfileScreen() {
             <TabButton label="Ucapan & Doa" value="messages" icon="chat" />
           </View>
 
-          {(activeTab === 'rsvps' || activeTab === 'messages') && invitations.length > 0 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-              <TouchableOpacity
-                onPress={() => setSelectedInvitationFilter('all')}
-                style={[styles.filterChip, selectedInvitationFilter === 'all' && styles.filterChipActive]}
-              >
-                <Text
-                  style={[
-                    styles.filterChipText,
-                    { color: selectedInvitationFilter === 'all' ? '#4f46e5' : '#64748b' },
-                  ]}
-                >
-                  Semua Undangan
-                </Text>
-              </TouchableOpacity>
-              {invitations.map((invitation) => {
-                const content = invitation.tbl_t_invitation_content || {};
-                const value = String(invitation.id_invitation);
-                const active = selectedInvitationFilter === value;
-                return (
-                  <TouchableOpacity
-                    key={value}
-                    onPress={() => setSelectedInvitationFilter(value)}
-                    style={[styles.filterChip, active && styles.filterChipActive]}
-                  >
-                    <Text style={[styles.filterChipText, { color: active ? '#4f46e5' : '#64748b' }]}>
-                      {(content.groom_name || 'Pria') + ' & ' + (content.bride_name || 'Wanita')}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          ) : null}
+          {/* Custom dropdown UI for the stats replaces the original global tabs filter row. We moved it up to affect the stats too. */}
 
           <View style={styles.contentArea}>
             {loading ? (
@@ -584,7 +647,7 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { paddingTop: 92, paddingHorizontal: 20, paddingBottom: 40 },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 40 },
   header: { gap: 18, marginBottom: 20 },
   userRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   avatar: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
@@ -603,7 +666,14 @@ const styles = StyleSheet.create({
   statIcon: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   statTitle: { fontSize: 12, fontWeight: '600' },
   statValue: { fontSize: 22, fontWeight: '800', marginTop: 2 },
-  panel: { borderWidth: 1, borderRadius: 24, overflow: 'hidden' },
+  filterLabel: { fontSize: 13, fontWeight: '700', marginBottom: 10 },
+  dropdownContainer: { borderWidth: 1, borderRadius: 14, position: 'relative', zIndex: 100 },
+  dropdownHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14 },
+  dropdownHeaderText: { fontSize: 14, fontWeight: '700', flex: 1, paddingRight: 10 },
+  dropdownMenu: { position: 'absolute', top: '100%', left: 0, right: 0, borderWidth: 1, borderRadius: 14, marginTop: 4, zIndex: 999, overflow: 'hidden' },
+  dropdownItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 0.5, borderBottomColor: '#e5e7eb' },
+  dropdownItemText: { fontSize: 14, fontWeight: '500', flex: 1, paddingRight: 10 },
+  panel: { borderWidth: 1, borderRadius: 24, overflow: 'hidden', zIndex: 1 },
   tabsRow: { flexDirection: 'row', borderBottomWidth: 1 },
   tabButton: { flex: 1, minHeight: 58, alignItems: 'center', justifyContent: 'center', gap: 4, borderBottomWidth: 2, borderBottomColor: 'transparent', paddingHorizontal: 8 },
   tabButtonActive: { borderBottomColor: '#6366f1' },

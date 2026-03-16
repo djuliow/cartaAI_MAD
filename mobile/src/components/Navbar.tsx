@@ -11,6 +11,7 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { usePathname, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { useDarkMode } from '../context/DarkModeContext';
 import Logo from './Logo';
@@ -28,6 +29,7 @@ const navLinks: MenuLink[] = [
 ];
 
 export default function Navbar() {
+  const insets = useSafeAreaInsets();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { session, userProfile } = useAuth();
   const { darkMode, toggleDarkMode } = useDarkMode();
@@ -69,7 +71,7 @@ export default function Navbar() {
           },
         ]}
       >
-        <SafeAreaView style={styles.safeArea}>
+        <View style={[styles.safeArea, { paddingTop: insets.top > 0 ? insets.top : Platform.OS === 'android' ? 30 : 0 }]}>
           <View style={styles.headerRow}>
             <TouchableOpacity
               style={styles.brand}
@@ -106,7 +108,7 @@ export default function Navbar() {
               </TouchableOpacity>
             </View>
           </View>
-        </SafeAreaView>
+        </View>
       </BlurView>
 
       {isMenuOpen ? (
@@ -248,7 +250,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   safeArea: {
-    paddingTop: Platform.OS === 'android' ? 10 : 0,
+    // paddingTop is now handled dynamically using useSafeAreaInsets
   },
   headerRow: {
     height: 72,
