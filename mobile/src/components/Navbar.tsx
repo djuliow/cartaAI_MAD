@@ -16,27 +16,10 @@ import { useAuth } from '../context/AuthContext';
 import { useDarkMode } from '../context/DarkModeContext';
 import Logo from './Logo';
 
-type MenuLink = {
-  label: string;
-  path: string;
-};
-
-const navLinks: MenuLink[] = [
-  { label: 'Beranda', path: '/' },
-  { label: 'Tentang', path: '/about' },
-  { label: 'Template', path: '/template' },
-  { label: 'Harga', path: '/harga' },
-];
-
 export default function Navbar() {
   const insets = useSafeAreaInsets();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { session, userProfile } = useAuth();
   const { darkMode, toggleDarkMode } = useDarkMode();
   const router = useRouter();
-  const pathname = usePathname();
-
-  const isPremium = userProfile?.subscription_status === 'premium';
   const theme = useMemo(
     () => ({
       text: darkMode ? '#f9fafb' : '#111827',
@@ -50,13 +33,6 @@ export default function Navbar() {
     }),
     [darkMode]
   );
-
-  const handleNavigate = (path: string) => {
-    setIsMenuOpen(false);
-    router.push(path as never);
-  };
-
-  const isActivePath = (path: string) => pathname === path;
 
   return (
     <View style={styles.wrapper}>
@@ -75,7 +51,7 @@ export default function Navbar() {
           <View style={styles.headerRow}>
             <TouchableOpacity
               style={styles.brand}
-              onPress={() => handleNavigate('/')}
+              onPress={() => router.push('/')}
               activeOpacity={0.85}
             >
               <Logo size={46} showText={false} />
@@ -96,12 +72,12 @@ export default function Navbar() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={() => setIsMenuOpen((prev) => !prev)}
+                onPress={() => router.push('/(tabs)/profile')}
                 style={[styles.iconButton, { backgroundColor: theme.hover }]}
                 activeOpacity={0.85}
               >
                 <MaterialIcons
-                  name={isMenuOpen ? 'close' : 'menu'}
+                  name="person"
                   size={24}
                   color={theme.text}
                 />
@@ -110,130 +86,6 @@ export default function Navbar() {
           </View>
         </View>
       </BlurView>
-
-      {isMenuOpen ? (
-        <BlurView
-          intensity={95}
-          tint={darkMode ? 'dark' : 'light'}
-          style={[
-            styles.menuPanel,
-            {
-              backgroundColor: theme.panel,
-              borderTopColor: theme.border,
-            },
-          ]}
-        >
-          <View style={styles.menuContent}>
-            {/* Navigasi */}
-            <View style={styles.menuSection}>
-              {navLinks.map((item) => {
-                const active = isActivePath(item.path);
-                return (
-                  <TouchableOpacity
-                    key={item.path}
-                    onPress={() => handleNavigate(item.path)}
-                    style={styles.linkButton}
-                    activeOpacity={0.8}
-                  >
-                    <View style={styles.linkRow}>
-                      <Text
-                        style={[
-                          styles.linkText,
-                          { color: active ? theme.active : theme.text },
-                          active && styles.linkTextActive,
-                        ]}
-                      >
-                        {item.label}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-            {/* Auth Buttons */}
-            {session ? (
-              <View style={styles.authGroup}>
-                {isPremium ? (
-                  <TouchableOpacity
-                    onPress={() => handleNavigate('/(tabs)/generator')}
-                    style={styles.ctaWrapper}
-                    activeOpacity={0.9}
-                  >
-                    <LinearGradient
-                      colors={['#facc15', '#f97316']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.ctaButton}
-                    >
-                      <Text style={styles.ctaText}>Premium Generator</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity
-                    onPress={() => handleNavigate('/(tabs)/generator')}
-                    style={[styles.freeButton, { backgroundColor: theme.freeBg }]}
-                    activeOpacity={0.9}
-                  >
-                    <Text style={[styles.freeButtonText, { color: theme.freeText }]}>
-                      Free Generator
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                <TouchableOpacity
-                  onPress={() => handleNavigate('/(tabs)/profile')}
-                  style={styles.ctaWrapper}
-                  activeOpacity={0.9}
-                >
-                  <LinearGradient
-                    colors={['#8b5cf6', '#a855f7']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.ctaButton}
-                  >
-                    <Text style={styles.ctaText}>Profil</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View style={styles.authGroup}>
-                <TouchableOpacity
-                  onPress={() => handleNavigate('/login')}
-                  style={styles.ctaWrapper}
-                  activeOpacity={0.9}
-                >
-                  <LinearGradient
-                    colors={['#8b5cf6', '#a855f7']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.ctaButton}
-                  >
-                    <Text style={styles.ctaText}>Masuk</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => handleNavigate('/register')}
-                  style={styles.ctaWrapper}
-                  activeOpacity={0.9}
-                >
-                  <LinearGradient
-                    colors={['#8b5cf6', '#a855f7']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.ctaButton}
-                  >
-                    <Text style={styles.ctaText}>Daftar</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        </BlurView>
-      ) : null}
     </View>
   );
 }
