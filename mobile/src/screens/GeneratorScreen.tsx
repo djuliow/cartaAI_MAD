@@ -226,8 +226,8 @@ export function GeneratorModeScreen({
       id: 1,
       type: 'bot',
       content: isPremium
-        ? 'Selamat datang! Lengkapi form, dan saya akan membuat undangan premium untuk Anda, lengkap dengan upload aset.'
-        : 'Selamat datang! Lengkapi form, dan saya akan membuat undangan gratis untuk Anda.',
+        ? 'Halo! Saya CartaAI. Lengkapi detail kebahagiaan Anda pada formulir, dan saya akan merangkai undangan digital premium yang eksklusif dan tak terlupakan untuk Anda.'
+        : 'Halo! Saya CartaAI. Silakan isi formulir di bawah, dan saya akan membantu membuatkan undangan digital yang cantik untuk momen spesial Anda.',
     },
   ]);
 
@@ -416,15 +416,17 @@ export function GeneratorModeScreen({
 
       const finalUrl = `${API_BASE_URL}/api/invitations/${slug}`;
       setGeneratedLink(finalUrl);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: prev.length + 1,
-          type: 'bot',
-          content:
-            'Undangan siap! Gunakan tombol di bawah untuk melihat pratinjau atau lanjut mengelola tamu di profil.',
-        },
-      ]);
+      
+      // Beri sedikit jeda agar animasi loading di AI terlihat natural, lalu alihkan
+      setTimeout(() => {
+        router.push({
+          pathname: '/success',
+          params: { slug }
+        });
+        // Sembunyikan chat agar jika user kembali (untuk edit), mereka langsung melihat form
+        setShowChat(false);
+      }, 1000);
+
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Terjadi kesalahan.';
       setMessages((prev) => [
@@ -668,8 +670,8 @@ export function GeneratorModeScreen({
 
           <Text style={[styles.subtitle, { color: theme.muted }]}>
             {isPremium
-              ? 'Buat undangan pernikahan eksklusif dengan fitur premium. Lengkapi form di bawah ini dan biarkan AI membuat undangan yang tak terlupakan.'
-              : 'Buat undangan pernikahan sederhana dengan fitur gratis. Lengkapi form di bawah ini dan biarkan AI membuat undangan Anda.'}
+              ? 'Rangkai momen indah Anda menjadi undangan digital yang elegan. Lengkapi formulir di bawah ini, dan biarkan CartaAI menghadirkan kemewahan untuk hari spesial Anda.'
+              : 'Wujudkan undangan digital cantik untuk hari bahagia Anda. Isi formulir di bawah ini dan CartaAI akan segera menyiapkannya untuk Anda.'}
           </Text>
         </View>
 

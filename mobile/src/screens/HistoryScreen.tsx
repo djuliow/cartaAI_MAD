@@ -21,6 +21,7 @@ import { useDarkMode } from '../context/DarkModeContext';
 import Navbar from '../components/Navbar';
 import { API_BASE_URL } from '../lib/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import GuestManagementModal from '../components/GuestManagementModal';
 
 export default function HistoryScreen() {
   const { session } = useAuth();
@@ -34,9 +35,6 @@ export default function HistoryScreen() {
 
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [shareSlug, setShareSlug] = useState('');
-  const [guestNames, setGuestNames] = useState('');
-  const [persistedGuests, setPersistedGuests] = useState<any[]>([]);
-  const [isSavingGuests, setIsSavingGuests] = useState(false);
 
   const theme = useMemo(
     () => ({
@@ -86,81 +84,9 @@ export default function HistoryScreen() {
     }
   };
 
-  const fetchGuests = async (slug: string) => {
-    if (!session?.access_token || !API_BASE_URL) return;
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/invitations/guests/${slug}`, {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-      if (res.ok) setPersistedGuests(await res.json());
-    } catch (err) {
-      console.error('Error fetching guests:', err);
-    }
-  };
-
   const handleShareClick = (slug: string) => {
     setShareSlug(slug);
-    setGuestNames('');
-    setPersistedGuests([]);
     setShareModalOpen(true);
-    fetchGuests(slug);
-  };
-
-  const saveGuests = async () => {
-    if (!session?.access_token || !API_BASE_URL) return;
-    const names = guestNames.split('\n').map((n) => n.trim()).filter(Boolean);
-    if (names.length === 0) {
-      Alert.alert('Daftar tamu kosong', 'Masukkan minimal satu nama tamu.');
-      return;
-    }
-    setIsSavingGuests(true);
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/invitations/guests/bulk`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ slug: shareSlug, names }),
-      });
-      if (!response.ok) throw new Error('Gagal menyimpan daftar tamu.');
-      setGuestNames('');
-      await fetchGuests(shareSlug);
-    } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Gagal menyimpan daftar tamu.');
-    } finally {
-      setIsSavingGuests(false);
-    }
-  };
-
-  const deleteGuest = async (guestId: string) => {
-    if (!session?.access_token || !API_BASE_URL) return;
-    Alert.alert('Hapus tamu?', 'Tamu ini akan dihapus dari daftar.', [
-      { text: 'Batal', style: 'cancel' },
-      {
-        text: 'Hapus',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            const res = await fetch(`${API_BASE_URL}/api/invitations/guests/${guestId}`, {
-              method: 'DELETE',
-              headers: { Authorization: `Bearer ${session.access_token}` },
-            });
-            if (res.ok) {
-              setPersistedGuests((prev) =>
-                prev.filter((guest) => guest.id_guest !== guestId)
-              );
-              Alert.alert('Berhasil', 'Tamu dihapus dari antrean.');
-            } else {
-              const errData = await res.json().catch(() => ({}));
-              Alert.alert('Gagal', errData.detail || 'Gagal menghapus tamu.');
-            }
-          } catch (e) {
-            Alert.alert('Error', 'Kesalahan jaringan saat menghapus tamu.');
-          }
-        },
-      },
-    ]);
   };
 
   const requestDeleteInvitation = (slug: string) => {
@@ -197,18 +123,6 @@ export default function HistoryScreen() {
     });
   };
 
-  const shareGuestLink = async (guestName: string) => {
-    try {
-      const guestSlug = `${shareSlug}-${guestName.toLowerCase().replace(/\s+/g, '-')}`;
-      const url = `${API_BASE_URL}/api/invitations/${shareSlug}?to=${encodeURIComponent(guestName)}`;
-      await Share.share({
-        message: `Halo ${guestName},\nKami mengundang Anda untuk hadir di acara pernikahan kami.\n\nBuka undangan: ${url}`,
-      });
-    } catch (err) {
-      console.error('Error sharing:', err);
-    }
-  };
-
   if (!session) return null;
 
   return (
@@ -219,6 +133,13 @@ export default function HistoryScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
+          <TouchableOpacity 
+            onPress={() => router.push('/(tabs)/profile')} 
+            style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 6 }}
+          >
+            <MaterialIcons name="arrow-back" size={24} color={theme.text} />
+            <Text style={{ fontSize: 16, fontWeight: '700', color: theme.text }}>Kembali</Text>
+          </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: theme.text }]}>Riwayat Undangan</Text>
           <Text style={[styles.headerSubtitle, { color: theme.muted }]}>
             Kelola semua undangan yang pernah Anda buat di sini.
@@ -287,53 +208,13 @@ export default function HistoryScreen() {
         </View>
       </ScrollView>
 
-      <Modal visible={shareModalOpen} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalCard, { backgroundColor: theme.card }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Manajemen Tamu</Text>
-              <TouchableOpacity onPress={() => setShareModalOpen(false)}>
-                <MaterialIcons name="close" size={24} color={theme.text} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={[styles.modalLabel, { color: theme.secondary }]}>Tambah Tamu Baru (Satu nama per baris)</Text>
-              <TextInput
-                value={guestNames}
-                onChangeText={setGuestNames}
-                multiline
-                placeholder="Budi Santoso&#10;Keluarga Andi"
-                placeholderTextColor="#9ca3af"
-                style={[styles.textArea, { backgroundColor: theme.soft, borderColor: theme.border, color: theme.text }]}
-              />
-              <TouchableOpacity onPress={saveGuests} disabled={isSavingGuests} style={styles.primaryWrap}>
-                <LinearGradient colors={['#6366f1', '#7c3aed']} style={styles.manageButton}>
-                  {isSavingGuests ? <ActivityIndicator color="#fff" /> : <Text style={styles.manageText}>Simpan ke Database</Text>}
-                </LinearGradient>
-              </TouchableOpacity>
-
-              <Text style={[styles.guestTitle, { color: theme.text }]}>Daftar Tamu Tersimpan ({persistedGuests.length})</Text>
-              {persistedGuests.length > 0 ? (
-                persistedGuests.map((guest) => (
-                  <View key={guest.id_guest} style={[styles.guestRow, { borderBottomColor: theme.border }]}>
-                    <Text style={[styles.guestName, { color: theme.text }]}>{guest.guest_name}</Text>
-                    <View style={styles.guestActions}>
-                      <TouchableOpacity onPress={() => shareGuestLink(guest.guest_name)} style={[styles.smallAction, { backgroundColor: '#f1f5f9' }]}>
-                        <MaterialIcons name="share" size={16} color="#3b82f6" />
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={() => deleteGuest(guest.id_guest)} style={[styles.smallAction, { backgroundColor: '#fef2f2' }]}>
-                        <MaterialIcons name="delete" size={16} color="#ef4444" />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ))
-              ) : (
-                <Text style={[styles.emptyText, { color: theme.muted, marginTop: 10 }]}>Belum ada tamu tersimpan.</Text>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      <GuestManagementModal
+        visible={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        slug={shareSlug}
+        sessionToken={session.access_token}
+        apiBaseUrl={API_BASE_URL || ''}
+      />
     </View>
   );
 }

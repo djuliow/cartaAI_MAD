@@ -100,7 +100,7 @@ export default function Footer() {
 
       {/* Bottom bar */}
       <View style={styles.bottomBar}>
-        <Text style={styles.copyright}>© 2025 CartaAI. Semua hak dilindungi.</Text>
+        <Text style={styles.copyright}>© 2026 CartaAI. Semua hak dilindungi.</Text>
         <TouchableOpacity
           onPress={() => Linking.openURL('https://www.instagram.com/cartaai')}
           activeOpacity={0.75}
