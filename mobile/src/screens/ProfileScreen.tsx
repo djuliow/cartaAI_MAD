@@ -23,7 +23,7 @@ import Navbar from '../components/Navbar';
 import { API_BASE_URL } from '../lib/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-type ActiveTab = 'invitations' | 'rsvps' | 'messages';
+type ActiveTab = 'rsvps' | 'messages';
 
 export default function ProfileScreen() {
   const { session, logout } = useAuth();
@@ -33,10 +33,10 @@ export default function ProfileScreen() {
 
   const [invitations, setInvitations] = useState<any[]>([]);
   const [rsvps, setRsvps] = useState<any[]>([]);
-  const [stats, setStats] = useState({ total: 0, hadir: 0, tidak_hadir: 0 });
+  const [stats, setStats] = useState({ total: 0, hadir: 0, tidak_hadir: 0, total_guests: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<ActiveTab>('invitations');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('rsvps');
   const [selectedInvitationFilter, setSelectedInvitationFilter] = useState('all');
   const [isInvitationDropdownOpen, setIsInvitationDropdownOpen] = useState(false);
 
@@ -78,6 +78,9 @@ export default function ProfileScreen() {
           tidak_hadir: filteredRsvps.filter((item) =>
             String(item.kehadiran || '').toLowerCase().includes('tidak')
           ).length,
+          total_guests: selectedInvitationFilter === 'all' 
+            ? stats.total_guests 
+            : persistedGuests.filter(g => g.id_invitation === Number(selectedInvitationFilter)).length || 0,
         };
 
   useFocusEffect(
@@ -112,7 +115,7 @@ export default function ProfileScreen() {
       if (rsvpRes.ok) {
         const rsvpData = await rsvpRes.json();
         setRsvps(rsvpData.messages || []);
-        setStats(rsvpData.stats || { total: 0, hadir: 0, tidak_hadir: 0 });
+        setStats(rsvpData.stats || { total: 0, hadir: 0, tidak_hadir: 0, total_guests: 0 });
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Gagal memuat data profil.';
@@ -170,7 +173,7 @@ export default function ProfileScreen() {
     }
   };
 
-  const deleteGuest = async (guestId: number) => {
+  const deleteGuest = async (guestId: string) => {
     if (!session?.access_token || !API_BASE_URL) return;
     Alert.alert('Hapus tamu?', 'Tamu ini akan dihapus dari daftar.', [
       { text: 'Batal', style: 'cancel' },
@@ -187,9 +190,13 @@ export default function ProfileScreen() {
               setPersistedGuests((prev) =>
                 prev.filter((guest) => guest.id_guest !== guestId)
               );
+              Alert.alert('Berhasil', 'Tamu dihapus dari antrean.');
+            } else {
+              const errData = await res.json().catch(() => ({}));
+              Alert.alert('Gagal', errData.detail || 'Gagal menghapus tamu.');
             }
-          } catch {
-            Alert.alert('Error', 'Gagal menghapus tamu.');
+          } catch (e) {
+            Alert.alert('Error', 'Kesalahan jaringan saat menghapus tamu.');
           }
         },
       },
@@ -349,7 +356,34 @@ export default function ProfileScreen() {
 
         <View style={{ marginBottom: 20 }}>
           <View style={{ gap: 12 }}>
-            <StatCard title="Total Undangan" value={invitations.length} icon="description" colors={['#eff6ff', '#2563eb']} accentColors={['#3b82f6', '#6366f1']} />
+            <View style={{ flexDirection: 'row', gap: 12, alignItems: 'stretch' }}>
+              
+              {/* Left Column (Stats) */}
+              <View style={{ flex: 1, gap: 12 }}>
+                <StatCard title="Total Undangan" value={invitations.length} icon="description" colors={['#eff6ff', '#2563eb']} accentColors={['#3b82f6', '#6366f1']} />
+                <StatCard title="Total Tamu" value={dynamicStats.total_guests} icon="people" colors={['#fffbeb', '#d97706']} accentColors={['#f59e0b', '#fbbf24']} />
+              </View>
+
+              {/* Right Column (Riwayat Button) */}
+              <TouchableOpacity
+                onPress={() => router.push('/(tabs)/history')}
+                style={{
+                  backgroundColor: theme.card,
+                  borderColor: theme.border,
+                  borderWidth: 1,
+                  borderRadius: 16,
+                  paddingHorizontal: 16,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  minWidth: 90,
+                  gap: 8,
+                }}
+              >
+                <MaterialIcons name="history" size={28} color="#6366f1" />
+                <Text style={{ fontSize: 13, fontWeight: '800', color: theme.text }}>Riwayat</Text>
+              </TouchableOpacity>
+              
+            </View>
             
             {/* Filter Dropdown */}
             {invitations.length > 0 && (
@@ -437,6 +471,21 @@ export default function ProfileScreen() {
                     </View>
                   )}
                 </View>
+
+                {selectedInvitationFilter !== 'all' && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      const inv = invitations.find((i) => String(i.id_invitation) === selectedInvitationFilter);
+                      if (inv) handleShareClick(inv.invitation_link);
+                    }}
+                    style={[styles.primaryWrap, { marginTop: 12, marginBottom: 0 }]}
+                  >
+                    <LinearGradient colors={['#6366f1', '#7c3aed']} style={styles.manageButton}>
+                      <MaterialIcons name="group" size={18} color="#fff" />
+                      <Text style={styles.manageText}>Daftar Tamu & Kirim</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
 
@@ -448,7 +497,6 @@ export default function ProfileScreen() {
 
         <View style={[styles.panel, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={[styles.tabsRow, { borderBottomColor: theme.border }]}>
-            <TabButton label="Riwayat Undangan" value="invitations" icon="history" />
             <TabButton label="Data RSVP" value="rsvps" icon="badge" />
             <TabButton label="Ucapan & Doa" value="messages" icon="chat" />
           </View>
@@ -460,62 +508,6 @@ export default function ProfileScreen() {
               <ActivityIndicator size="large" color="#6366f1" style={{ marginVertical: 32 }} />
             ) : error ? (
               <Text style={styles.errorText}>{error}</Text>
-            ) : activeTab === 'invitations' ? (
-              invitations.length > 0 ? (
-                invitations.map((invitation) => {
-                  const content = invitation.tbl_t_invitation_content || {};
-                  const pria = content.groom_name || 'Mempelai Pria';
-                  const wanita = content.bride_name || 'Mempelai Wanita';
-                  return (
-                    <View
-                      key={invitation.id_invitation}
-                      style={[styles.invCard, { backgroundColor: theme.soft, borderColor: theme.border }]}
-                    >
-                      {/* Top accent bar identical to web */}
-                      <LinearGradient
-                        colors={['#667eea', '#764ba2']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={styles.invAccent}
-                      />
-                      <View style={styles.invHeader}>
-                        <View style={styles.activeBadge}>
-                          <Text style={styles.activeBadgeText}>AKTIF</Text>
-                        </View>
-                        <Text style={[styles.invDate, { color: theme.muted }]}>
-                          {new Date(invitation.created_date).toLocaleDateString()}
-                        </Text>
-                      </View>
-                      <Text style={[styles.invNames, { color: theme.text }]}>{pria} & {wanita}</Text>
-
-                      <TouchableOpacity onPress={() => handleShareClick(invitation.invitation_link)} style={styles.primaryWrap}>
-                        <LinearGradient colors={['#6366f1', '#7c3aed']} style={styles.manageButton}>
-                          <MaterialIcons name="group" size={18} color="#fff" />
-                          <Text style={styles.manageText}>Daftar Tamu & Kirim</Text>
-                        </LinearGradient>
-                      </TouchableOpacity>
-
-                      <View style={styles.invActions}>
-                        <TouchableOpacity
-                          onPress={() => openInvitation(invitation.invitation_link)}
-                          style={[styles.viewButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-                        >
-                          <MaterialIcons name="visibility" size={16} color={theme.secondary} />
-                          <Text style={[styles.viewText, { color: theme.secondary }]}>Lihat</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={() => requestDeleteInvitation(invitation.invitation_link)}
-                          style={styles.deleteButton}
-                        >
-                          <MaterialIcons name="delete" size={18} color="#ef4444" />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  );
-                })
-              ) : (
-                <Text style={[styles.emptyText, { color: theme.muted }]}>Belum ada riwayat undangan.</Text>
-              )
             ) : activeTab === 'rsvps' ? (
               filteredRsvps.length > 0 ? (
                 filteredRsvps.map((item, index) => (

@@ -1041,7 +1041,7 @@ export function GeneratorModeScreen({
                         {message.content}
                       </Text>
 
-                      {generatedLink ? (
+                      {generatedLink && message.content.includes('Undangan siap!') ? (
                         <View style={styles.resultActions}>
                           <TouchableOpacity onPress={openGeneratedLink}>
                             <LinearGradient colors={gradientFree} style={styles.resultButton}>

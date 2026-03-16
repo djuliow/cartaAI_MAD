@@ -77,7 +77,7 @@ export default function RecentInvitations({ refreshKey = 0 }: { refreshKey?: num
         </View>
         <TouchableOpacity
           style={styles.headerLink}
-          onPress={() => router.push('/(tabs)/profile')}
+          onPress={() => router.push('/(tabs)/history')}
           activeOpacity={0.8}
         >
           <Text style={styles.headerLinkText}>Lihat Semua</Text>
@@ -143,7 +143,7 @@ export default function RecentInvitations({ refreshKey = 0 }: { refreshKey?: num
                       styles.settingsButton,
                       { backgroundColor: darkMode ? '#374151' : '#f3f4f6' },
                     ]}
-                    onPress={() => router.push('/(tabs)/profile')}
+                    onPress={() => router.push('/(tabs)/history')}
                     activeOpacity={0.8}
                   >
                     <MaterialIcons

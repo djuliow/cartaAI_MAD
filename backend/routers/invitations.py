@@ -6,6 +6,7 @@ import os
 import hashlib
 import uuid
 import traceback
+import re
 from datetime import datetime
 from dotenv import load_dotenv
 from supabase import create_client, Client
@@ -83,6 +84,19 @@ def empty_to_none(value):
         return None
     return value
 
+def sanitize_time(value):
+    """Extract valid HH:MM:SS from string, discarding timezone words like 'Wita', 'WIB', etc."""
+    if not value or not isinstance(value, str):
+        return None
+    # Look for HH:MM:SS or HH:MM or HH.MM style formats
+    match = re.search(r'([01]?[0-9]|2[0-3])[:.]([0-5][0-9])(?:[:.]([0-5][0-9]))?', str(value))
+    if match:
+        h = match.group(1).zfill(2)
+        m = match.group(2)
+        s = match.group(3) or "00"
+        return f"{h}:{m}:{s}"
+    return None
+
 # --- Endpoints ---
 
 @router.get("/guests/{slug}")
@@ -127,9 +141,13 @@ async def add_guests_bulk(request: BulkGuestCreate, current_user: dict = Depends
 @router.delete("/guests/{guest_id}")
 async def delete_guest(guest_id: str):
     try:
+        # Delete associated RSVPs first to avoid foreign key constraint violations
+        supabase.table("tbl_t_rsvp").delete().eq("id_guest", guest_id).execute()
+        # Delete the guest
         supabase.table("tbl_t_guest").delete().eq("id_guest", guest_id).execute()
         return {"message": "Guest deleted successfully"}
     except Exception as e:
+        print(f"Error deleting guest: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/")
@@ -201,9 +219,9 @@ async def generate_and_upload_invitation(request: InvitationRequest, current_use
             "theme_color": request.temaWarna,
             "custom_font": request.customFont,
             "akad_date": empty_to_none(request.tanggalAcara),
-            "akad_time": empty_to_none(request.waktuAcara),
+            "akad_time": sanitize_time(request.waktuAcara),
             "akad_location": empty_to_none(request.lokasiAcara),
-            "reception_time": empty_to_none(request.waktuResepsi),
+            "reception_time": sanitize_time(request.waktuResepsi),
             "reception_location": empty_to_none(request.tempatResepsi),
             "music_url": empty_to_none(request.musik),
             "groom_photo": request.fotoMempelaiPria,
@@ -300,9 +318,9 @@ async def generate_and_upload_invitation_free(request: InvitationRequest, curren
             "invitation_type": "Free",
             "theme_color": "Standard",
             "akad_date": empty_to_none(request.tanggalAcara),
-            "akad_time": empty_to_none(request.waktuAcara),
+            "akad_time": sanitize_time(request.waktuAcara),
             "akad_location": empty_to_none(request.lokasiAcara),
-            "reception_time": empty_to_none(request.waktuResepsi),
+            "reception_time": sanitize_time(request.waktuResepsi),
             "reception_location": empty_to_none(request.tempatResepsi),
             "special_notes": request.catatanKhusus,
             "is_active": True,
@@ -344,7 +362,7 @@ async def get_all_user_rsvps(current_user: dict = Depends(get_current_user)):
         rsvp_res = supabase.table("tbl_t_rsvp").select("*").in_("id_guest", guest_ids).order('created_date', desc=True).execute()
         
         mapped = []
-        stats_data = {"total": 0, "hadir": 0, "tidak_hadir": 0}
+        stats_data = {"total": 0, "hadir": 0, "tidak_hadir": 0, "total_guests": len(guest_res.data)}
         
         for item in rsvp_res.data:
             status_val = str(item.get('attendance_status') or "Hadir")
