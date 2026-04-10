@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .select('*')
         .eq('id_user', userId)
         .eq('is_active', true)
-        .order('created_at', { ascending: false })
+        .order('created_date', { ascending: false })
         .limit(1);
 
       if (subError) console.error('Error fetching subscription:', subError);
